@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, AlertCircle, Phone, User, MapPin, Store } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
