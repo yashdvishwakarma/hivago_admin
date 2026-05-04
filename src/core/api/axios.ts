@@ -23,6 +23,8 @@ apiClient.interceptors.request.use(
   }
 );
 
+import toast from 'react-hot-toast';
+
 // Response Interceptor
 apiClient.interceptors.response.use(
   (response) => {
@@ -32,6 +34,7 @@ apiClient.interceptors.response.use(
     // Only auto-logout if it's a 401 and NOT from the login endpoint
     const isLoginRequest = error.config?.url?.includes('/login');
     if (error.response?.status === 401 && !isLoginRequest) {
+      toast.error('Session expired. Please log in again.');
       useAuthStore.getState().logout();
       window.location.href = '/login';
     }

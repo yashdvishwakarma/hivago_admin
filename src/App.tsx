@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AdminLayout } from './layouts/AdminLayout';
 import { useAuthStore } from './store/authStore';
+import { SessionWarningModal } from './components/SessionWarningModal';
 
 // Lazy loading pages
 const DashboardPage = lazy(() => import('./modules/dashboard/pages/DashboardPage'));
@@ -10,6 +11,7 @@ const OrdersPage = lazy(() => import('./modules/orders/pages/OrdersPage'));
 const MenuPage = lazy(() => import('./modules/menu/pages/MenuPage'));
 const RestaurantsPage = lazy(() => import('./modules/restaurants/pages/RestaurantsPage'));
 const PayoutsPage = lazy(() => import('./modules/payouts/pages/PayoutsPage'));
+const AnalyticsPage = lazy(() => import('./modules/analytics/pages/AnalyticsPage'));
 const SettingsPage = lazy(() => import('./modules/settings/pages/SettingsPage'));
 const LoginPage = lazy(() => import('./modules/auth/pages/LoginPage'));
 
@@ -36,6 +38,7 @@ function App() {
   return (
     <Suspense fallback={<Loader />}>
       <Toaster position="bottom-center" toastOptions={{ duration: 3000 }} />
+      <SessionWarningModal />
       <Routes>
         {/* Public Login Route */}
         <Route
@@ -57,6 +60,7 @@ function App() {
           <Route path="menu" element={<MenuPage />} />
           <Route path="restaurants" element={<RestaurantsPage />} />
           <Route path="payouts" element={<PayoutsPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           {/* Default fallback inside layout */}
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -5,11 +5,13 @@ import toast from 'react-hot-toast';
 import { restaurantService, type AdminRestaurant } from '@/core/api/restaurants';
 import { AddRestaurantModal } from './components/AddRestaurantModal';
 import { EditRestaurantModal } from './components/EditRestaurantModal';
+import { ToggleConfirmModal } from './components/ToggleConfirmModal';
 
 export default function RestaurantsPage() {
   const queryClient = useQueryClient();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingRestaurant, setEditingRestaurant] = useState<AdminRestaurant | null>(null);
+  const [toggleConfirmData, setToggleConfirmData] = useState<{ id: string; name: string; isActive: boolean } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data, isLoading } = useQuery({
@@ -24,6 +26,7 @@ export default function RestaurantsPage() {
       restaurantService.toggleStatus(id, activate),
     onSuccess: (_, { activate }) => {
       toast.success(`Restaurant ${activate ? 'activated' : 'deactivated'} successfully!`);
+      setToggleConfirmData(null);
       queryClient.invalidateQueries({ queryKey: ['restaurants'] });
     },
     onError: (error: any) => {
@@ -143,7 +146,7 @@ export default function RestaurantsPage() {
                             restaurant.isActive ? 'text-[#d72b1f] hover:text-[#b91d13]' : 'text-green-600 hover:text-green-700'
                           } disabled:opacity-50`}
                           title={restaurant.isActive ? 'Deactivate' : 'Activate'}
-                          onClick={() => toggleMutation.mutate({ id: restaurant.id, activate: !restaurant.isActive })}
+                          onClick={() => setToggleConfirmData({ id: restaurant.id, name: restaurant.name, isActive: restaurant.isActive })}
                           disabled={toggleMutation.isPending && toggleMutation.variables?.id === restaurant.id}
                         >
                           {toggleMutation.isPending && toggleMutation.variables?.id === restaurant.id ? (
@@ -171,6 +174,19 @@ export default function RestaurantsPage() {
         isOpen={!!editingRestaurant}
         onClose={() => setEditingRestaurant(null)}
         restaurant={editingRestaurant}
+      />
+
+      <ToggleConfirmModal
+        isOpen={!!toggleConfirmData}
+        onClose={() => setToggleConfirmData(null)}
+        restaurantName={toggleConfirmData?.name || ''}
+        isActive={toggleConfirmData?.isActive || false}
+        isPending={toggleMutation.isPending}
+        onConfirm={() => {
+          if (toggleConfirmData) {
+            toggleMutation.mutate({ id: toggleConfirmData.id, activate: !toggleConfirmData.isActive });
+          }
+        }}
       />
     </div>
   );

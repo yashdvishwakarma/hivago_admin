@@ -1,0 +1,90 @@
+import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { Clock, LogOut } from 'lucide-react';
+import { cn } from '@/utils/cn';
+
+export function SessionWarningModal() {
+  const { isAuthenticated, expiresAt, logout, extendSession } = useAuthStore();
+  const [showWarning, setShowWarning] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  // Constants
+  const WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before expiry
+
+  useEffect(() => {
+    if (!isAuthenticated || !expiresAt) {
+      setShowWarning(false);
+      return;
+    }
+
+    const checkExpiration = () => {
+      const expTime = new Date(expiresAt).getTime();
+      const now = Date.now();
+      const remaining = expTime - now;
+
+      if (remaining <= 0) {
+        // Session technically expired locally, but let the user extend it or let the API 401 handle it
+        setShowWarning(true);
+        setTimeLeft(0);
+      } else if (remaining <= WARNING_THRESHOLD_MS) {
+        // Show warning
+        setShowWarning(true);
+        setTimeLeft(Math.ceil(remaining / 1000));
+      } else {
+        // Hide warning if session was extended
+        setShowWarning(false);
+      }
+    };
+
+    // Check immediately and then every second
+    checkExpiration();
+    const interval = setInterval(checkExpiration, 1000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, expiresAt, logout]);
+
+  const handleStaySignedIn = () => {
+    // Note: In a real environment, you would call your backend's refresh endpoint here.
+    // For now, we extend the local expiresAt timer by 1 hour.
+    const newExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    extendSession(newExpiry);
+    setShowWarning(false);
+  };
+
+  if (!showWarning) return null;
+
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-[400px] overflow-hidden flex flex-col transform scale-100 transition-transform">
+        <div className="p-6 pb-2 flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-5 border border-orange-100">
+            <Clock className="w-8 h-8 text-orange-500 animate-pulse" />
+          </div>
+          <h2 className="text-[20px] font-bold text-gray-900 mb-2 tracking-tight">Session Expiring Soon</h2>
+          <p className="text-[14px] text-gray-500 leading-relaxed px-2">
+            For your security, you will be automatically logged out in <span className="font-bold text-[#d72b1f]">{minutes}:{seconds.toString().padStart(2, '0')}</span>. Do you want to stay signed in?
+          </p>
+        </div>
+
+        <div className="p-6 pt-5 flex flex-col gap-2.5">
+          <button
+            onClick={handleStaySignedIn}
+            className="w-full py-2.5 bg-[#d72b1f] hover:bg-[#b91d13] text-white text-[14px] font-bold rounded-xl transition-colors shadow-sm active:scale-[0.98]"
+          >
+            Stay Signed In
+          </button>
+          <button
+            onClick={logout}
+            className="w-full py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 text-[14px] font-bold rounded-xl transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout Now
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

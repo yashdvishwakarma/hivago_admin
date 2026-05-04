@@ -49,7 +49,11 @@ export default function LoginPage() {
         role: rawData.role || 'Admin'
       };
 
-      login(token, user);
+      // Default to 1 hour if backend doesn't provide expiresAt
+      const defaultExpiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      const expiresAt = rawData.accessTokenExpiresAt || defaultExpiresAt;
+
+      login(token, user, expiresAt);
       toast.success('Successfully logged in!');
       navigate('/');
     },

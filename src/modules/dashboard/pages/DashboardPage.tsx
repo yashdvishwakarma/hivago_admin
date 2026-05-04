@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  Package, 
-  CheckCircle2, 
-  Bike, 
-  IdCard, 
+import {
+  Package,
+  CheckCircle2,
+  Bike,
+  IdCard,
   Store,
   Clock,
   X,
@@ -15,11 +15,13 @@ import SplashBg from '@/assets/splash_bg.svg';
 import AlertResolutionModal, { type AlertData } from '../components/AlertResolutionModal';
 import AssignRiderModal from '../components/AssignRiderModal';
 import OrderDetailsModal, { type OrderDetailsData } from '../components/OrderDetailsModal';
+import RefundModal from '../components/RefundModal';
 
 export default function DashboardPage() {
   const [selectedAlert, setSelectedAlert] = useState<AlertData | null>(null);
   const [isAssignRiderOpen, setIsAssignRiderOpen] = useState(false);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<OrderDetailsData | null>(null);
+  const [refundOrderNumber, setRefundOrderNumber] = useState<string | null>(null);
 
   const { data: stats, isLoading: isStatsLoading } = useQuery({
     queryKey: ['adminStats'],
@@ -42,8 +44,8 @@ export default function DashboardPage() {
   // Use live stats if available
   const displayStats = {
     activeOrders: stats?.activeOrders ?? 23,
-    ordersToday: stats?.ordersToday ?? 147,
-    ridersOnline: stats?.ridersOnline ?? 18,
+    ordersToday: stats?.todayOrders ?? 147,
+    ridersOnline: stats?.onlineRiders ?? 18,
     pendingKyc: stats?.pendingKyc ?? 5,
     activeRestaurants: stats?.activeRestaurants ?? 42
   };
@@ -96,7 +98,8 @@ export default function DashboardPage() {
     customer: order.customerName || 'Customer',
     items: `${order.totalItems || order.itemCount || 1} items`,
     restaurant: order.restaurantName || 'Restaurant',
-    rider: order.riderName || 'Unassigned'
+    rider: order.riderName || 'Unassigned',
+    originalOrder: order
   })) : [
     {
       id: 'OR-8821',
@@ -124,14 +127,14 @@ export default function DashboardPage() {
 
   return (
     <div className="w-full">
-      <AlertResolutionModal 
-        isOpen={!!selectedAlert} 
-        onClose={() => setSelectedAlert(null)} 
-        alert={selectedAlert} 
+      <AlertResolutionModal
+        isOpen={!!selectedAlert}
+        onClose={() => setSelectedAlert(null)}
+        alert={selectedAlert}
         onAssignRider={() => setIsAssignRiderOpen(true)}
       />
 
-      <AssignRiderModal 
+      <AssignRiderModal
         isOpen={isAssignRiderOpen}
         onClose={() => setIsAssignRiderOpen(false)}
         orderNumber={selectedAlert?.orderNumber || 'OR-0000'}
@@ -141,6 +144,21 @@ export default function DashboardPage() {
         isOpen={!!selectedOrderDetails}
         onClose={() => setSelectedOrderDetails(null)}
         order={selectedOrderDetails}
+        onInitiateRefund={() => {
+          if (selectedOrderDetails) {
+            setRefundOrderNumber(selectedOrderDetails.orderNumber);
+            setSelectedOrderDetails(null);
+          }
+        }}
+      />
+
+      <RefundModal
+        isOpen={!!refundOrderNumber}
+        onClose={() => setRefundOrderNumber(null)}
+        orderNumber={refundOrderNumber}
+        onConfirm={(reason) => {
+          console.log(`Refund initiated for ${refundOrderNumber} with reason: ${reason}`);
+        }}
       />
 
       {/* Header */}
@@ -187,7 +205,7 @@ export default function DashboardPage() {
             <h2 className="text-[17px] font-bold text-gray-900">Alerts</h2>
             <p className="text-[13px] text-[#d72b1f] font-medium mt-0.5">{displayAlerts.length} active alerts</p>
           </div>
-          
+
           <div className="space-y-4">
             {isAlertsLoading ? (
               <>
@@ -196,24 +214,23 @@ export default function DashboardPage() {
                 <AlertSkeleton />
               </>
             ) : displayAlerts.map((alert: any) => (
-              <div 
-                key={alert.id} 
+              <div
+                key={alert.id}
                 onClick={() => setSelectedAlert(alert)}
-                className={`relative rounded-2xl p-5 border shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${
-                  alert.type === 'stuck' ? 'bg-[#fffdf5] border-orange-100' : 
-                  alert.type === 'awaiting' ? 'bg-[#fff5eb] border-orange-200' :
-                  alert.type === 'pending_kyc' ? 'bg-[#f5f3ff] border-purple-100' :
-                  'bg-[#fff5f5] border-red-50'
-                }`}
+                className={`relative rounded-2xl p-5 border shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${alert.type === 'stuck' ? 'bg-[#fffdf5] border-orange-100' :
+                    alert.type === 'awaiting' ? 'bg-[#fff5eb] border-orange-200' :
+                      alert.type === 'pending_kyc' ? 'bg-[#f5f3ff] border-purple-100' :
+                        'bg-[#fff5f5] border-red-50'
+                  }`}
               >
                 {/* Splash background */}
-                <img 
-                  src={SplashBg} 
-                  alt="" 
-                  className="absolute bottom-0 left-0 w-6 h-6 object-contain opacity-40 pointer-events-none" 
+                <img
+                  src={SplashBg}
+                  alt=""
+                  className="absolute bottom-0 left-0 w-6 h-6 object-contain opacity-40 pointer-events-none"
                 />
 
-                <button 
+                <button
                   className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -223,25 +240,22 @@ export default function DashboardPage() {
                   <X className="w-4 h-4" />
                 </button>
                 <div className="relative z-10">
-                  <h3 className={`font-bold text-[15px] mb-1 ${
-                    alert.type === 'stuck' || alert.type === 'awaiting' ? 'text-orange-700' : 
-                    alert.type === 'pending_kyc' ? 'text-purple-700' :
-                    'text-[#d72b1f]'
-                  }`}>
+                  <h3 className={`font-bold text-[15px] mb-1 ${alert.type === 'stuck' || alert.type === 'awaiting' ? 'text-orange-700' :
+                      alert.type === 'pending_kyc' ? 'text-purple-700' :
+                        'text-[#d72b1f]'
+                    }`}>
                     {alert.title}
                   </h3>
-                  <p className={`text-[13px] mb-4 ${
-                    alert.type === 'stuck' || alert.type === 'awaiting' ? 'text-orange-800/80' : 
-                    alert.type === 'pending_kyc' ? 'text-purple-800/80' :
-                    'text-[#d72b1f]/80'
-                  }`}>
+                  <p className={`text-[13px] mb-4 ${alert.type === 'stuck' || alert.type === 'awaiting' ? 'text-orange-800/80' :
+                      alert.type === 'pending_kyc' ? 'text-purple-800/80' :
+                        'text-[#d72b1f]/80'
+                    }`}>
                     {alert.message}
                   </p>
-                  <button className={`px-4 py-1.5 rounded-full text-[13px] font-semibold bg-white shadow-sm border ${
-                    alert.type === 'stuck' || alert.type === 'awaiting' ? 'border-orange-200 text-orange-700 hover:bg-orange-50' : 
-                    alert.type === 'pending_kyc' ? 'border-purple-200 text-purple-700 hover:bg-purple-50' :
-                    'border-red-100 text-[#d72b1f] hover:bg-red-50'
-                  }`}>
+                  <button className={`px-4 py-1.5 rounded-full text-[13px] font-semibold bg-white shadow-sm border ${alert.type === 'stuck' || alert.type === 'awaiting' ? 'border-orange-200 text-orange-700 hover:bg-orange-50' :
+                      alert.type === 'pending_kyc' ? 'border-purple-200 text-purple-700 hover:bg-purple-50' :
+                        'border-red-100 text-[#d72b1f] hover:bg-red-50'
+                    }`}>
                     {alert.actionText}
                   </button>
                 </div>
@@ -275,28 +289,30 @@ export default function DashboardPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-[15px] text-gray-900">{order.id}</h3>
-                      <button 
+                      <button
                         onClick={() => {
+                          const og = order.originalOrder || {};
                           setSelectedOrderDetails({
                             id: order.id,
+                            orderId: og.orderId,
+                            originalOrder: og,
                             orderNumber: order.id,
-                            time: "08/04/2026, 14:15:20",
-                            statusType: order.id.includes('8821') || order.id.includes('8804') ? 'critical' : 'warning',
-                            statusTitle: order.id.includes('8804') ? "Critical Issue" : "Warning",
-                            statusDescription: order.id.includes('8804') ? "Dispatch failed - No riders available" : "No rider assigned for 12 minutes",
+                            time: og.createdAt ? new Date(og.createdAt).toLocaleString() : new Date().toLocaleString(),
+                            statusType: og.isEscalated || og.status === 'Failed' ? 'critical' : 'warning',
+                            statusTitle: og.status || 'Active',
+                            statusDescription: og.delayMinutes ? `Delayed by ${og.delayMinutes} minutes` : 'Order processing',
                             customerName: order.customer,
-                            customerPhone: "+91 88888 12345",
-                            customerAddress: "Flat 204, Aundh Society, Aundh, Pune, Maharashtra 411007",
+                            customerPhone: og.customerPhone || "+91 88888 12345",
+                            customerAddress: og.customerAddress || "Address details not provided by API",
                             restaurantName: order.restaurant,
-                            restaurantAddress: "Koregaon Park, Pune, Maharashtra 411001",
-                            items: [
-                              { name: "Veg Burger", quantity: 1 },
-                              { name: "French Fries", quantity: 1 }
-                            ],
+                            restaurantAddress: og.restaurantAddress || "Address details not provided by API",
+                            items: og.items || Array.from({ length: og.itemCount || og.totalItems || 1 }).map((_, i) => ({
+                              name: `Item ${i + 1}`,
+                              quantity: 1
+                            })),
                             totalAmount: order.price,
-                            timeline: [
-                              { status: "Placed", time: "14:00:10 - 08/04/2026" },
-                              { status: "Confirmed", time: "14:02:25 - 08/04/2026" }
+                            timeline: og.timeline || [
+                              { status: "Placed", time: og.createdAt ? new Date(og.createdAt).toLocaleString() : new Date().toLocaleString() }
                             ]
                           });
                         }}
@@ -316,13 +332,12 @@ export default function DashboardPage() {
 
                 <div className="flex flex-wrap gap-2 mb-4">
                   {order.tags.map((tag: string, idx: number) => (
-                    <span 
-                      key={idx} 
-                      className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${
-                        tag.toLowerCase() === 'escalated' 
-                          ? 'bg-[#fff5f5] text-[#d72b1f] border-red-100' 
+                    <span
+                      key={idx}
+                      className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${tag.toLowerCase() === 'escalated'
+                          ? 'bg-[#fff5f5] text-[#d72b1f] border-red-100'
                           : 'bg-green-50 text-green-700 border-green-100'
-                      }`}
+                        }`}
                     >
                       {tag}
                     </span>

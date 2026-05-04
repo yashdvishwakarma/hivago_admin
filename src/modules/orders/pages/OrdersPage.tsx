@@ -20,6 +20,7 @@ import { ordersService, type OrderStatus } from '@/core/api/orders';
 import { cn } from '@/utils/cn';
 import { format } from 'date-fns';
 import OrderDetailsModal, { type OrderDetailsData } from '../../dashboard/components/OrderDetailsModal';
+import RefundModal from '../../dashboard/components/RefundModal';
 
 const TABS = [
   { id: 'all', label: 'All Orders', icon: ShoppingBag, activeColor: 'text-[#059669]', activeBg: 'bg-[#ecfdf5]', activeBorder: 'border-[#059669]' },
@@ -33,6 +34,7 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<OrderDetailsData | null>(null);
+  const [refundOrderNumber, setRefundOrderNumber] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['orders', activeTab, searchTerm, statusFilter],
@@ -72,6 +74,7 @@ export default function OrdersPage() {
       case 'cancelled': return 'failed';
       case 'readyforpickup':
       case 'ready': return 'success';
+      case 'confirmed': return 'info';
       default: return 'secondary';
     }
   };
@@ -82,6 +85,21 @@ export default function OrdersPage() {
         isOpen={!!selectedOrderDetails}
         onClose={() => setSelectedOrderDetails(null)}
         order={selectedOrderDetails}
+        onInitiateRefund={() => {
+          if (selectedOrderDetails) {
+            setRefundOrderNumber(selectedOrderDetails.orderNumber);
+            setSelectedOrderDetails(null);
+          }
+        }}
+      />
+
+      <RefundModal 
+        isOpen={!!refundOrderNumber}
+        onClose={() => setRefundOrderNumber(null)}
+        orderNumber={refundOrderNumber}
+        onConfirm={(reason) => {
+          console.log(`Refund initiated for ${refundOrderNumber} with reason: ${reason}`);
+        }}
       />
 
       {/* Header */}
@@ -242,7 +260,10 @@ export default function OrdersPage() {
                       <button className="hover:text-primary transition-colors cursor-pointer p-1">
                         <History className="h-[18px] w-[18px]" />
                       </button>
-                      <button className="hover:text-red-600 transition-colors cursor-pointer p-1">
+                      <button 
+                        onClick={() => setRefundOrderNumber(order.orderNumber)}
+                        className="hover:text-red-600 transition-colors cursor-pointer p-1"
+                      >
                         <XCircle className="h-[18px] w-[18px]" />
                       </button>
                     </div>
