@@ -1,5 +1,4 @@
-import React from 'react';
-import { IndianRupee, TrendingUp, TrendingDown, Bike, Receipt } from 'lucide-react';
+import { IndianRupee, TrendingUp, Bike, Receipt } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 const kpiData = [

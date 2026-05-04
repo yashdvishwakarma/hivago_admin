@@ -1,4 +1,3 @@
-import React from 'react';
 import { Calendar, ChevronDown } from 'lucide-react';
 import { KPICards } from '../components/KPICards';
 import { GMVChart } from '../components/GMVChart';

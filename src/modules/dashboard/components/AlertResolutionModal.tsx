@@ -1,10 +1,10 @@
 import React from 'react';
-import { 
-  X, 
-  AlertTriangle, 
-  UserPlus, 
-  Phone, 
-  Store, 
+import {
+  X,
+  AlertTriangle,
+  UserPlus,
+  Phone,
+  Store,
   AlertCircle,
   RefreshCw,
   Headphones,

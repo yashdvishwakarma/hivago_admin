@@ -1,4 +1,3 @@
-import React from 'react';
 
 const summaryData = [
   { label: 'Total Delivery Fees', value: '₹52,983', sublabel: 'Own fleet', bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-600', valText: 'text-blue-800' },

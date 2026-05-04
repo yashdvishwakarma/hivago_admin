@@ -1,10 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Download, Eye } from 'lucide-react';
 import { ordersService } from '@/core/api/orders';
 import { restaurantService } from '@/core/api/restaurants';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
-import { cn } from '@/utils/cn';
 import TransactionDetailsView from './TransactionDetailsView';
 import type { TransactionData } from './TransactionDetailsView';
 

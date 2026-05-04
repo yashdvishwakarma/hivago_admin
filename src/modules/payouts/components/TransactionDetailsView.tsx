@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ArrowLeft, RefreshCw, X, Info } from 'lucide-react';
-import { cn } from '@/utils/cn';
 
 export interface TransactionData {
   orderId: string;
