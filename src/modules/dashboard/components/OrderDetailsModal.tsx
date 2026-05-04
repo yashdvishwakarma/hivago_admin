@@ -252,7 +252,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onInitiateRe
             <div>
               <h3 className="font-bold text-[14px] text-gray-900 mb-3">Order Items</h3>
               <div className="space-y-2 mb-4">
-                {mappedOrder.items.map((item, idx) => (
+                {mappedOrder.items.map((item: OrderItem, idx: number) => (
                   <div key={idx} className="flex items-start gap-2 text-[13px] text-gray-700">
                     <span className="text-gray-400">•</span>
                     <span>{item.quantity ? `${item.quantity}x ` : ''}{item.name}</span>

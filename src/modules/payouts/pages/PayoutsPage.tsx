@@ -413,8 +413,6 @@ export default function PayoutsPage() {
                 </TableRow>
               ) : tableData.map((row, index) => {
               const isExpanded = expandedRowId === row.id;
-              const isLastRows = index >= tableData.length - 2 && tableData.length > 2;
-
               return (
                 <React.Fragment key={row.id}>
                   <TableRow 
