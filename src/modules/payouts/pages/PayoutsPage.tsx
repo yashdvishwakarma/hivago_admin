@@ -411,7 +411,7 @@ export default function PayoutsPage() {
                     No payout data available for current cycle
                   </TableCell>
                 </TableRow>
-              ) : tableData.map((row, index) => {
+              ) : tableData.map((row) => {
               const isExpanded = expandedRowId === row.id;
               return (
                 <React.Fragment key={row.id}>
