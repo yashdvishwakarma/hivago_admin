@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { Clock, LogOut } from 'lucide-react';
-import { cn } from '@/utils/cn';
+// import { cn } from '@/utils/cn';
 
 export function SessionWarningModal() {
   const { isAuthenticated, expiresAt, logout, extendSession } = useAuthStore();
