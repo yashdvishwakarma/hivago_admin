@@ -1,55 +1,62 @@
 import { IndianRupee, TrendingUp, Bike, Receipt } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
-const kpiData = [
-  {
-    title: 'GMV (Total Sales)',
-    value: '₹4,54,027',
-    change: '+12.5%',
-    isPositive: true,
-    icon: IndianRupee,
-    iconColor: 'text-green-500',
-    iconBg: 'bg-green-50',
-  },
-  {
-    title: 'Platform Revenue',
-    value: '₹60,813',
-    change: '+14.1%',
-    isPositive: true,
-    icon: TrendingUp,
-    iconColor: 'text-green-500',
-    iconBg: 'bg-green-50',
-  },
-  {
-    title: 'Delivery Fees Collected',
-    value: '₹24,011',
-    change: '+6.3%',
-    isPositive: true,
-    icon: Bike,
-    iconColor: 'text-blue-500',
-    iconBg: 'bg-blue-50',
-  },
-  {
-    title: 'Total Refunds Issued',
-    value: '₹12,450',
-    change: '-5.2%',
-    isPositive: false,
-    icon: Receipt,
-    iconColor: 'text-red-500',
-    iconBg: 'bg-red-50',
-  },
-  {
-    title: 'Net Revenue',
-    value: '₹72,374',
-    change: '+18.7%',
-    isPositive: true,
-    icon: TrendingUp,
-    iconColor: 'text-purple-500',
-    iconBg: 'bg-purple-50',
-  },
-];
+import type { AdminStats, RevenueStats } from '@/core/api/analytics';
 
-export function KPICards() {
+interface KPICardsProps {
+  adminStats: AdminStats;
+  revenueStats: RevenueStats;
+}
+
+export function KPICards({ adminStats, revenueStats }: KPICardsProps) {
+  // Use todayRevenue as GMV, lifetimeCommission or todayCommission for Platform Revenue, etc.
+  const kpiData = [
+    {
+      title: 'GMV (Today)',
+      value: `₹${revenueStats.todayRevenue.toLocaleString()}`,
+      change: '+12.5%', // Mocking change for now as API doesn't provide previous period
+      isPositive: true,
+      icon: IndianRupee,
+      iconColor: 'text-green-500',
+      iconBg: 'bg-green-50',
+    },
+    {
+      title: 'Platform Revenue (Total)',
+      value: `₹${revenueStats.lifetimeRevenue.toLocaleString()}`,
+      change: '+14.1%',
+      isPositive: true,
+      icon: TrendingUp,
+      iconColor: 'text-green-500',
+      iconBg: 'bg-green-50',
+    },
+    {
+      title: 'Pending Payouts',
+      value: `₹${revenueStats.unpaidPayoutAmount.toLocaleString()}`,
+      change: 'Active',
+      isPositive: true,
+      icon: Receipt,
+      iconColor: 'text-blue-500',
+      iconBg: 'bg-blue-50',
+    },
+    {
+      title: 'Total Refunds Issued',
+      value: `₹0`, // API doesn't expose refunds explicitly
+      change: '-5.2%',
+      isPositive: false,
+      icon: Receipt,
+      iconColor: 'text-red-500',
+      iconBg: 'bg-red-50',
+    },
+    {
+      title: 'Total Active Orders',
+      value: `${adminStats.activeOrders.toLocaleString()}`,
+      change: `Out of ${adminStats.todayOrders} today`,
+      isPositive: true,
+      icon: Bike,
+      iconColor: 'text-purple-500',
+      iconBg: 'bg-purple-50',
+    },
+  ];
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
       {kpiData.map((kpi, idx) => {

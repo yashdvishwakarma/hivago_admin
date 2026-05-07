@@ -7,6 +7,7 @@ import {
   Wallet, 
   LineChart, 
   Settings,
+  Users,
   LogOut
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -16,6 +17,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Orders', href: '/orders', icon: ShoppingBag },
   { name: 'Restaurants', href: '/restaurants', icon: Store },
+  { name: 'Owners', href: '/owners', icon: Users },
   { name: 'Riders', href: '/riders', icon: Bike },
   { name: 'Payouts', href: '/payouts', icon: Wallet },
   { name: 'Money Analytics', href: '/analytics', icon: LineChart },

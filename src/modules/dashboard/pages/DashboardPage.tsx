@@ -26,19 +26,16 @@ export default function DashboardPage() {
   const { data: stats, isLoading: isStatsLoading } = useQuery({
     queryKey: ['adminStats'],
     queryFn: dashboardService.getStats,
-    refetchInterval: 30000,
   });
 
   const { data: alerts, isLoading: isAlertsLoading } = useQuery({
     queryKey: ['adminAlerts'],
     queryFn: () => dashboardService.getAlerts(),
-    refetchInterval: 15000,
   });
 
   const { data: liveOrdersData, isLoading: isLiveOrdersLoading } = useQuery({
     queryKey: ['adminLiveOrders'],
     queryFn: () => dashboardService.getLiveOrders(),
-    refetchInterval: 15000,
   });
 
   // Use live stats if available

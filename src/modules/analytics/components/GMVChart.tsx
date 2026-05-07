@@ -8,15 +8,12 @@ import {
   Line
 } from 'recharts';
 
-const data = [
-  { name: 'Mon', gmv: 52000 },
-  { name: 'Tue', gmv: 58000 },
-  { name: 'Wed', gmv: 61000 },
-  { name: 'Thu', gmv: 68000 },
-  { name: 'Fri', gmv: 73000 },
-  { name: 'Sat', gmv: 87000 },
-  { name: 'Sun', gmv: 79000 },
-];
+import { subDays, format } from 'date-fns';
+import type { RevenueStats } from '@/core/api/analytics';
+
+interface GMVChartProps {
+  revenueStats: RevenueStats;
+}
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -32,10 +29,23 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export function GMVChart() {
+export function GMVChart({ revenueStats }: GMVChartProps) {
+  // Approximate daily GMV based on the last 7 days total
+  const dailyAvg = revenueStats.last7DaysRevenue / 7;
+  
+  // Generate the last 7 days (including today)
+  const data = Array.from({ length: 7 }).map((_, i) => {
+    // i=0 is 6 days ago, i=6 is today
+    const date = subDays(new Date(), 6 - i);
+    return {
+      name: format(date, 'EEE'), // e.g., 'Mon', 'Tue'
+      gmv: Math.round(dailyAvg)
+    };
+  });
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-      <h3 className="text-base font-semibold text-gray-900 mb-6">GMV Over Time</h3>
+      <h3 className="text-base font-semibold text-gray-900 mb-6">GMV Over Time (7-Day Avg)</h3>
       <div className="h-[300px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>

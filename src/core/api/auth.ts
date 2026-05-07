@@ -5,6 +5,12 @@ export interface LoginPayload {
   password?: string;
 }
 
+export interface ChangePasswordPayload {
+  currentPassword?: string;
+  newPassword?: string;
+  confirmNewPassword?: string;
+}
+
 export interface LoginResponse {
   adminId: string;
   name: string;
@@ -22,5 +28,10 @@ export const authService = {
     const response = await apiClient.post<{ data: LoginResponse }>('/admins/login', payload);
     // Depending on standard axios response mapping, it returns response.data already due to interceptor.
     return response as unknown as LoginResponse; 
+  },
+
+  changePassword: async (payload: ChangePasswordPayload): Promise<any> => {
+    const response = await apiClient.put('/admin/profile/password', payload);
+    return response;
   },
 };

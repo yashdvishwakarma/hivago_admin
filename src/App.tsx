@@ -10,9 +10,11 @@ const DashboardPage = lazy(() => import('./modules/dashboard/pages/DashboardPage
 const OrdersPage = lazy(() => import('./modules/orders/pages/OrdersPage'));
 const MenuPage = lazy(() => import('./modules/menu/pages/MenuPage'));
 const RestaurantsPage = lazy(() => import('./modules/restaurants/pages/RestaurantsPage'));
+const RidersPage = lazy(() => import('./modules/riders/pages/RidersPage'));
 const PayoutsPage = lazy(() => import('./modules/payouts/pages/PayoutsPage'));
 const AnalyticsPage = lazy(() => import('./modules/analytics/pages/AnalyticsPage'));
 const SettingsPage = lazy(() => import('./modules/settings/pages/SettingsPage'));
+const OwnersPage = lazy(() => import('./modules/owners/pages/OwnersPage'));
 const LoginPage = lazy(() => import('./modules/auth/pages/LoginPage'));
 
 function Loader() {
@@ -59,6 +61,8 @@ function App() {
           <Route path="orders" element={<OrdersPage />} />
           <Route path="menu" element={<MenuPage />} />
           <Route path="restaurants" element={<RestaurantsPage />} />
+          <Route path="owners" element={<OwnersPage />} />
+          <Route path="riders" element={<RidersPage />} />
           <Route path="payouts" element={<PayoutsPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="settings" element={<SettingsPage />} />

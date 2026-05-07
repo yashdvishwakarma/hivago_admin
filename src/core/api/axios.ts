@@ -1,8 +1,10 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
+export const API_URL = import.meta.env.VITE_API_URL || 'https://rally-production-2004.up.railway.app/api';
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://rally-production-2004.up.railway.app/api',
+  baseURL: API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -38,6 +40,28 @@ apiClient.interceptors.response.use(
       useAuthStore.getState().logout();
       window.location.href = '/login';
     }
+
+    // Extract API validation errors and format them into the message property
+    // so all components automatically show them in their existing toast handlers.
+    if (error.response?.data) {
+      const data = error.response.data;
+      
+      // Handle standard ASP.NET validation dictionary: { "Email": ["Required"] }
+      if (data.errors && typeof data.errors === 'object') {
+        const errorMessages = Object.values(data.errors).flat().filter(Boolean);
+        if (errorMessages.length > 0) {
+          data.message = errorMessages.join(' • ');
+        }
+      } 
+      // Handle custom details array: [{ field: "email", message: "Required" }]
+      else if (Array.isArray(data.details) && data.details.length > 0) {
+        const errorMessages = data.details.map((d: any) => d.message).filter(Boolean);
+        if (errorMessages.length > 0) {
+          data.message = errorMessages.join(' • ');
+        }
+      }
+    }
+
     return Promise.reject(error);
   }
 );

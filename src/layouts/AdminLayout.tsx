@@ -1,8 +1,11 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
+import { useAdminSignalR } from '@/core/hooks/useAdminSignalR';
 
 export function AdminLayout() {
+  useAdminSignalR();
+
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-[#f8fafc]">
       {/* TopNav - Full Width */}

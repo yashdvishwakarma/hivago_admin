@@ -1,17 +1,32 @@
 // import React from 'react';
 import { cn } from '@/utils/cn';
 
-const funnelData = [
-  { stage: 'Orders Placed', count: 1523, percent: 100, color: 'bg-indigo-400' },
-  { stage: 'Payment Success', count: 1487, percent: 97.6, color: 'bg-green-600' },
-  { stage: 'Restaurant Confirmed', count: 1432, percent: 94, color: 'bg-orange-500' },
-  { stage: 'Delivered', count: 1247, percent: 81.9, color: 'bg-emerald-500' },
-  { stage: 'Cancelled', count: 185, percent: 12.2, color: 'bg-red-500' },
-  { stage: 'Failed', count: 55, percent: 3.6, color: 'bg-gray-400' },
-  { stage: 'Refunded', count: 36, percent: 2.4, color: 'bg-emerald-300' },
-];
+import type { OrderStats } from '@/core/api/analytics';
 
-export function OrdersFunnel() {
+interface OrdersFunnelProps {
+  orderStats: OrderStats;
+}
+
+export function OrdersFunnel({ orderStats }: OrdersFunnelProps) {
+  const { total, byStatus } = orderStats;
+
+  // Assuming `byStatus` contains stages like Confirmed, Preparing, ReadyForPickup, Cancelled, Delivered (though not in the current mock output). 
+  // We map the funnel accordingly.
+  const confirmed = byStatus['Confirmed'] || 0;
+  const preparing = byStatus['Preparing'] || 0;
+  const ready = byStatus['ReadyForPickup'] || 0;
+  const cancelled = byStatus['Cancelled'] || 0;
+  
+  // Safe calculation to avoid division by zero
+  const getPercent = (count: number) => total > 0 ? Number(((count / total) * 100).toFixed(1)) : 0;
+
+  const funnelData = [
+    { stage: 'Total Orders', count: total, percent: 100, color: 'bg-indigo-400' },
+    { stage: 'Confirmed', count: confirmed, percent: getPercent(confirmed), color: 'bg-green-600' },
+    { stage: 'Preparing', count: preparing, percent: getPercent(preparing), color: 'bg-orange-500' },
+    { stage: 'Ready For Pickup', count: ready, percent: getPercent(ready), color: 'bg-emerald-500' },
+    { stage: 'Cancelled', count: cancelled, percent: getPercent(cancelled), color: 'bg-red-500' },
+  ];
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
       <h3 className="text-base font-semibold text-gray-900 mb-6">Orders Funnel</h3>

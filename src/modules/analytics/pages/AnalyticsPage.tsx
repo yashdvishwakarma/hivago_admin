@@ -1,4 +1,6 @@
-import { Calendar, ChevronDown } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Calendar, ChevronDown, Loader2 } from 'lucide-react';
+import { analyticsService } from '@/core/api/analytics';
 import { KPICards } from '../components/KPICards';
 import { GMVChart } from '../components/GMVChart';
 import { OrdersFunnel } from '../components/OrdersFunnel';
@@ -7,6 +9,29 @@ import { RiderPayoutSummary } from '../components/RiderPayoutSummary';
 import { RefundsBreakdownTable } from '../components/RefundsBreakdownTable';
 
 export default function AnalyticsPage() {
+  const { data: adminStats, isLoading: isLoadingAdmin } = useQuery({
+    queryKey: ['adminStatsAnalytics'],
+    queryFn: analyticsService.getAdminStats
+  });
+
+  const { data: orderStats, isLoading: isLoadingOrders } = useQuery({
+    queryKey: ['orderStats'],
+    queryFn: analyticsService.getOrderStats
+  });
+
+  const { data: revenueStats, isLoading: isLoadingRevenue } = useQuery({
+    queryKey: ['revenueStats'],
+    queryFn: analyticsService.getRevenueStats
+  });
+
+  if (isLoadingAdmin || isLoadingOrders || isLoadingRevenue) {
+    return (
+      <div className="w-full h-full flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-8">
       {/* Page Header */}
@@ -23,13 +48,19 @@ export default function AnalyticsPage() {
       </div>
 
       {/* KPI Cards Row */}
-      <KPICards />
+      {adminStats && revenueStats && (
+        <KPICards adminStats={adminStats} revenueStats={revenueStats} />
+      )}
 
       {/* GMV Chart */}
-      <GMVChart />
+      {revenueStats && (
+        <GMVChart revenueStats={revenueStats} />
+      )}
 
       {/* Orders Funnel */}
-      <OrdersFunnel />
+      {orderStats && (
+        <OrdersFunnel orderStats={orderStats} />
+      )}
 
       {/* Revenue Table */}
       <RevenueByRestaurantTable />

@@ -32,6 +32,7 @@ export interface RestaurantsResponse {
 }
 
 export interface CreateRestaurantPayload {
+  ownerId: string;
   name: string;
   phone: string;
   email: string;
@@ -56,7 +57,7 @@ export const restaurantService = {
   },
 
   createRestaurant: async (payload: CreateRestaurantPayload): Promise<any> => {
-    const response = await apiClient.post('/admins/restaurants', payload);
+    const response = await apiClient.post('/admin/restaurants', payload);
     return response;
   },
   
