@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { Clock, LogOut } from 'lucide-react';
-// import { cn } from '@/utils/cn';
+import { authService } from '@/core/api/auth';
+import toast from 'react-hot-toast';
 
 export function SessionWarningModal() {
-  const { isAuthenticated, expiresAt, logout, extendSession } = useAuthStore();
+  const { isAuthenticated, refreshToken, expiresAt, logout, extendSession } = useAuthStore();
   const [showWarning, setShowWarning] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Constants
   const WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before expiry
@@ -23,9 +25,11 @@ export function SessionWarningModal() {
       const remaining = expTime - now;
 
       if (remaining <= 0) {
-        // Session technically expired locally, but let the user extend it or let the API 401 handle it
-        setShowWarning(true);
-        setTimeLeft(0);
+        // Force logout when timer ends
+        console.log('[Auth] Session expired, logging out...');
+        logout();
+        setShowWarning(false);
+        window.location.href = '/login';
       } else if (remaining <= WARNING_THRESHOLD_MS) {
         // Show warning
         setShowWarning(true);
@@ -43,12 +47,24 @@ export function SessionWarningModal() {
     return () => clearInterval(interval);
   }, [isAuthenticated, expiresAt, logout]);
 
-  const handleStaySignedIn = () => {
-    // Note: In a real environment, you would call your backend's refresh endpoint here.
-    // For now, we extend the local expiresAt timer by 1 hour.
-    const newExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    extendSession(newExpiry);
-    setShowWarning(false);
+  const handleStaySignedIn = async () => {
+    if (!refreshToken) return;
+    
+    setIsRefreshing(true);
+    try {
+      console.log('[Auth] Attempting to refresh session...');
+      const response = await authService.refresh(refreshToken);
+      extendSession(response.accessTokenExpiresAt, response.accessToken);
+      setShowWarning(false);
+      toast.success('Session extended successfully');
+    } catch (error) {
+      console.error('[Auth] Failed to refresh session:', error);
+      toast.error('Failed to extend session. Please log in again.');
+      logout();
+      window.location.href = '/login';
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   if (!showWarning) return null;

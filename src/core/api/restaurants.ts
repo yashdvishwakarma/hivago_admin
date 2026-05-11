@@ -40,14 +40,6 @@ export interface CreateRestaurantPayload {
   addressLine: string;
   latitude: number;
   longitude: number;
-  commissionPercentage?: number;
-  avgPrepTimeMins?: number;
-  cuisineTypes?: string[];
-  isPureVeg?: boolean;
-  isVeganFriendly?: boolean;
-  hasJainOptions?: boolean;
-  minOrderAmount?: number;
-  fssaiNumber?: string;
 }
 
 export const restaurantService = {
@@ -61,7 +53,7 @@ export const restaurantService = {
     return response;
   },
   
-  updateRestaurant: async (id: string, payload: Partial<CreateRestaurantPayload>): Promise<any> => {
+  updateRestaurant: async (id: string, payload: Partial<AdminRestaurant> & { fssaiNumber?: string }): Promise<any> => {
     const response = await apiClient.put(`/admins/restaurants/${id}`, payload);
     return response;
   },

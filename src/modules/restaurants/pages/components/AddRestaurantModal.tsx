@@ -36,15 +36,10 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
     addressLine: '',
     latitude: 0,
     longitude: 0,
-    commissionPercentage: 0,
-    avgPrepTimeMins: 30,
-    cuisineTypes: [],
-    fssaiNumber: '',
-    minOrderAmount: 0,
-    isPureVeg: false,
-    isVeganFriendly: false,
-    hasJainOptions: false
   });
+
+  const [latInput, setLatInput] = useState('0');
+  const [lngInput, setLngInput] = useState('0');
 
   const [errorMsg, setErrorMsg] = useState('');
   const [ownerSearchQuery, setOwnerSearchQuery] = useState('');
@@ -62,8 +57,6 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
   const { data: ownersData, isLoading: isSearchingOwners } = useQuery({
     queryKey: ['ownersSearch', debouncedOwnerQuery],
     queryFn: async () => {
-      // Workaround: Backend throws 500 error when using the 'search' query parameter.
-      // Fetch a larger page size and filter locally for now.
       const res = await ownerService.getOwners({ pageSize: 100 });
       if (debouncedOwnerQuery && res?.owners) {
         const lowerQ = debouncedOwnerQuery.toLowerCase();
@@ -81,7 +74,6 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
     enabled: isOwnerDropdownOpen,
   });
 
-  // Handle click outside dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (ownerDropdownRef.current && !ownerDropdownRef.current.contains(event.target as Node)) {
@@ -98,10 +90,12 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
       toast.success('Restaurant created successfully!');
       queryClient.invalidateQueries({ queryKey: ['restaurants'] });
       onClose();
-      // Reset form
       setFormData({
-        ownerId: '', name: '', phone: '', email: '', password: '', addressLine: '', latitude: 0, longitude: 0
+        ownerId: '', name: '', phone: '', email: '', password: '', addressLine: '', 
+        latitude: 0, longitude: 0
       });
+      setLatInput('0');
+      setLngInput('0');
       setSelectedOwner(null);
       setOwnerSearchQuery('');
       setErrorMsg('');
@@ -118,7 +112,6 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
-
     try {
       addRestaurantSchema.parse(formData);
       mutation.mutate(formData);
@@ -132,13 +125,27 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    if (name === 'cuisineTypes') {
-      setFormData(prev => ({ ...prev, cuisineTypes: value.split(',').map(s => s.trim()).filter(Boolean) }));
+    
+    if (name === 'latitude') {
+      setLatInput(value);
+      const parsed = parseFloat(value);
+      if (!isNaN(parsed)) {
+        setFormData(prev => ({ ...prev, latitude: parsed }));
+      }
       return;
     }
+    if (name === 'longitude') {
+      setLngInput(value);
+      const parsed = parseFloat(value);
+      if (!isNaN(parsed)) {
+        setFormData(prev => ({ ...prev, longitude: parsed }));
+      }
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : type === 'number' ? (value ? parseFloat(value) : '') : value
+      [name]: type === 'checkbox' ? checked : type === 'number' ? (value === '' ? 0 : parseFloat(value)) : value
     }));
   };
 
@@ -146,7 +153,6 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
         
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-lg font-bold text-gray-900">Add New Restaurant</h2>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors">
@@ -154,7 +160,6 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-6 overflow-y-auto">
           {errorMsg && (
             <div className="mb-6 p-3 rounded-lg bg-red-50 text-red-600 text-sm font-medium text-center">
@@ -164,7 +169,6 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
 
           <form id="add-restaurant-form" onSubmit={handleSubmit} className="space-y-5">
             
-            {/* Owner Selection */}
             <div className="space-y-1.5 relative" ref={ownerDropdownRef}>
               <label className="text-[13px] font-semibold text-gray-700">Assign Owner <span className="text-red-500">*</span></label>
               
@@ -211,7 +215,6 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
                 </div>
               )}
 
-              {/* Dropdown Results */}
               {isOwnerDropdownOpen && !selectedOwner && (
                 <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-h-60 overflow-y-auto">
                   {ownersData?.owners && ownersData.owners.length > 0 ? (
@@ -225,7 +228,7 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
                               setSelectedOwner(owner);
                               setFormData(prev => ({ ...prev, ownerId: owner.id }));
                               setIsOwnerDropdownOpen(false);
-                              setErrorMsg(''); // Clear any owner error
+                              setErrorMsg('');
                             }}
                           >
                             <div className="flex-shrink-0 mt-0.5">
@@ -290,11 +293,14 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[13px] font-semibold text-gray-700">Operating Hours</label>
+              <label className="text-[13px] font-semibold text-gray-700">Initial Password</label>
               <input 
-                name="operatingHours" 
+                type="password" 
+                name="password" 
+                value={formData.password} 
+                onChange={handleChange} 
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" 
-                placeholder="10:00 AM - 11:00 PM"
+                placeholder="••••••••"
               />
             </div>
 
@@ -309,80 +315,29 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
               />
             </div>
 
-            {/* Business Settings */}
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[13px] font-semibold text-gray-700">Commission %</label>
-                <input type="number" step="any" name="commissionPercentage" value={formData.commissionPercentage} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" placeholder="0" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[13px] font-semibold text-gray-700">Avg Prep Time (mins)</label>
-                <input type="number" name="avgPrepTimeMins" value={formData.avgPrepTimeMins} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" placeholder="30" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[13px] font-semibold text-gray-700">Min Order Amount</label>
-                <input type="number" step="any" name="minOrderAmount" value={formData.minOrderAmount} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" placeholder="0" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[13px] font-semibold text-gray-700">FSSAI Number</label>
-                <input name="fssaiNumber" value={formData.fssaiNumber} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" placeholder="Optional" />
-              </div>
-              <div className="space-y-1.5 col-span-2">
-                <label className="text-[13px] font-semibold text-gray-700">Cuisine Types (comma separated)</label>
-                <input name="cuisineTypes" value={formData.cuisineTypes?.join(', ') || ''} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" placeholder="Indian, Chinese" />
-              </div>
-            </div>
-
-            {/* Dietary Options */}
-            <div className="flex flex-wrap items-center gap-6 pt-2 pb-2">
-              <label className="flex items-center gap-2 text-[13px] font-medium text-gray-700 cursor-pointer">
-                <input type="checkbox" name="isPureVeg" checked={formData.isPureVeg} onChange={handleChange} className="rounded border-gray-300 text-[#d72b1f] focus:ring-[#d72b1f] w-4 h-4" />
-                Pure Veg
-              </label>
-              <label className="flex items-center gap-2 text-[13px] font-medium text-gray-700 cursor-pointer">
-                <input type="checkbox" name="isVeganFriendly" checked={formData.isVeganFriendly} onChange={handleChange} className="rounded border-gray-300 text-[#d72b1f] focus:ring-[#d72b1f] w-4 h-4" />
-                Vegan Friendly
-              </label>
-              <label className="flex items-center gap-2 text-[13px] font-medium text-gray-700 cursor-pointer">
-                <input type="checkbox" name="hasJainOptions" checked={formData.hasJainOptions} onChange={handleChange} className="rounded border-gray-300 text-[#d72b1f] focus:ring-[#d72b1f] w-4 h-4" />
-                Jain Options
-              </label>
-            </div>
-
-            {/* Hidden fields required by API but not in the screenshot UI, kept minimal */}
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-100">
-              <div className="space-y-1.5">
-                <label className="text-[12px] font-semibold text-gray-500">Initial Password</label>
+                <label className="text-[13px] font-semibold text-gray-700">Latitude</label>
                 <input 
-                  type="password" 
-                  name="password" 
-                  value={formData.password} 
-                  onChange={handleChange} 
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50/50 text-xs" 
-                  placeholder="••••••••"
+                  type="text" name="latitude" 
+                  value={latInput} onChange={handleChange} 
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors" 
+                  placeholder="0.0000"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[12px] font-semibold text-gray-500">Lat</label>
+                <label className="text-[13px] font-semibold text-gray-700">Longitude</label>
                 <input 
-                  type="number" step="any" name="latitude" 
-                  value={formData.latitude} onChange={handleChange} 
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50/50 text-xs" 
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[12px] font-semibold text-gray-500">Lng</label>
-                <input 
-                  type="number" step="any" name="longitude" 
-                  value={formData.longitude} onChange={handleChange} 
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50/50 text-xs" 
+                  type="text" name="longitude" 
+                  value={lngInput} onChange={handleChange} 
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors" 
+                  placeholder="0.0000"
                 />
               </div>
             </div>
           </form>
         </div>
 
-        {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
           <button 
             type="button"

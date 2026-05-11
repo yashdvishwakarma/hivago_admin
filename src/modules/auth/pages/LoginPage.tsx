@@ -51,9 +51,10 @@ export default function LoginPage() {
 
       // Default to 1 hour if backend doesn't provide expiresAt
       const defaultExpiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      const refreshToken = rawData?.refreshToken || '';
       const expiresAt = rawData.accessTokenExpiresAt || defaultExpiresAt;
 
-      login(token, user, expiresAt);
+      login(token, refreshToken, user, expiresAt, rememberMe);
       toast.success('Successfully logged in!');
       navigate('/');
     },

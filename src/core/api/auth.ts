@@ -34,4 +34,9 @@ export const authService = {
     const response = await apiClient.put('/admin/profile/password', payload);
     return response;
   },
+
+  refresh: async (refreshToken: string): Promise<LoginResponse> => {
+    const response = await apiClient.post<LoginResponse>('/auth/refresh', { refreshToken });
+    return response as unknown as LoginResponse;
+  },
 };

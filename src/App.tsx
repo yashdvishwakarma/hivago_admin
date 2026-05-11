@@ -34,13 +34,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+import { AuthInitializer } from './components/AuthInitializer';
+
 function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   return (
-    <Suspense fallback={<Loader />}>
-      <Toaster position="bottom-center" toastOptions={{ duration: 3000 }} />
-      <SessionWarningModal />
+    <AuthInitializer>
+      <Suspense fallback={<Loader />}>
+        <Toaster position="bottom-center" toastOptions={{ duration: 3000 }} />
+        <SessionWarningModal />
       <Routes>
         {/* Public Login Route */}
         <Route
@@ -71,6 +74,7 @@ function App() {
         </Route>
       </Routes>
     </Suspense>
+    </AuthInitializer>
   );
 }
 

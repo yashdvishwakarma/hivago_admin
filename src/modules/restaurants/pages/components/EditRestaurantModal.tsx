@@ -17,6 +17,7 @@ const editRestaurantSchema = z.object({
   phone: z.string().min(10, 'Phone must be at least 10 characters'),
   email: z.string().email('Invalid email address'),
   addressLine: z.string().min(5, 'Address is required'),
+  commissionFlatFee: z.number().min(0, 'Commission must be positive'),
 });
 
 export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaurantModalProps) {
@@ -27,15 +28,23 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
     phone: '',
     email: '',
     addressLine: '',
-    commissionPercentage: 0,
+    operatingHours: '',
+    commissionFlatFee: 0,
     avgPrepTimeMins: 30,
     cuisineTypes: [] as string[],
     fssaiNumber: '',
     minOrderAmount: 0,
     isPureVeg: false,
     isVeganFriendly: false,
-    hasJainOptions: false
+    hasJainOptions: false,
+    latitude: 0,
+    longitude: 0
   });
+
+  const [latInput, setLatInput] = useState('0');
+  const [lngInput, setLngInput] = useState('0');
+
+  const [cuisineInput, setCuisineInput] = useState('');
 
   useEffect(() => {
     if (restaurant && isOpen) {
@@ -44,15 +53,21 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
         phone: restaurant.phone !== 'Not Available' ? restaurant.phone : '',
         email: restaurant.email !== 'Not Available' ? restaurant.email : '',
         addressLine: restaurant.addressLine || '',
-        commissionPercentage: restaurant.commissionPercentage || 0,
+        operatingHours: restaurant.operatingHoursSummary !== 'N/A - N/A' ? restaurant.operatingHoursSummary : '',
+        commissionFlatFee: restaurant.commissionFlatFee || 0,
         avgPrepTimeMins: restaurant.avgPrepTimeMins ?? 30,
         cuisineTypes: restaurant.cuisineTypes || [],
-        fssaiNumber: '', // Catalog doesn't return this, keep empty
+        fssaiNumber: '', 
         minOrderAmount: restaurant.minOrderAmount ?? 0,
         isPureVeg: restaurant.isPureVeg || false,
         isVeganFriendly: restaurant.isVeganFriendly || false,
-        hasJainOptions: restaurant.hasJainOptions || false
+        hasJainOptions: restaurant.hasJainOptions || false,
+        latitude: (restaurant as any).latitude || 0,
+        longitude: (restaurant as any).longitude || 0
       });
+      setLatInput(((restaurant as any).latitude || 0).toString());
+      setLngInput(((restaurant as any).longitude || 0).toString());
+      setCuisineInput(restaurant.cuisineTypes?.join(', ') || '');
       setErrorMsg('');
     }
   }, [restaurant, isOpen]);
@@ -88,14 +103,17 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
           name: formData.name,
           phone: formData.phone,
           addressLine: formData.addressLine,
-          commissionPercentage: formData.commissionPercentage,
+          operatingHours: formData.operatingHours,
+          commissionFlatFee: formData.commissionFlatFee,
           avgPrepTimeMins: formData.avgPrepTimeMins,
           cuisineTypes: formData.cuisineTypes,
           isPureVeg: formData.isPureVeg,
           isVeganFriendly: formData.isVeganFriendly,
           hasJainOptions: formData.hasJainOptions,
           minOrderAmount: formData.minOrderAmount,
-          fssaiNumber: formData.fssaiNumber
+          fssaiNumber: formData.fssaiNumber,
+          latitude: formData.latitude,
+          longitude: formData.longitude
         };
         
         mutation.mutate(payload);
@@ -107,17 +125,50 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
       }
     };
   
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const { name, value, type, checked } = e.target;
-      if (name === 'cuisineTypes') {
-        setFormData(prev => ({ ...prev, cuisineTypes: value.split(',').map(s => s.trim()).filter(Boolean) }));
-        return;
-      }
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : type === 'number' ? (value ? parseFloat(value) : '') : value
-      }));
-    };
+      const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value, type, checked } = e.target;
+        
+        if (name === 'cuisineInput') {
+          setCuisineInput(value);
+          setFormData(prev => ({ 
+            ...prev, 
+            cuisineTypes: value.split(',').map(s => s.trim()).filter(Boolean) 
+          }));
+          return;
+        }
+
+        if (name === 'latitude') {
+          setLatInput(value);
+          const parsed = parseFloat(value);
+          if (!isNaN(parsed)) {
+            setFormData(prev => ({ ...prev, latitude: parsed }));
+          }
+          return;
+        }
+        if (name === 'longitude') {
+          setLngInput(value);
+          const parsed = parseFloat(value);
+          if (!isNaN(parsed)) {
+            setFormData(prev => ({ ...prev, longitude: parsed }));
+          }
+          return;
+        }
+
+        if (name === 'selectAllDietary') {
+          setFormData(prev => ({
+            ...prev,
+            isPureVeg: checked,
+            isVeganFriendly: checked,
+            hasJainOptions: checked
+          }));
+          return;
+        }
+
+        setFormData(prev => ({
+          ...prev,
+          [name]: type === 'checkbox' ? checked : type === 'number' ? (value === '' ? 0 : parseFloat(value)) : value
+        }));
+      };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -179,9 +230,10 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
               <label className="text-[13px] font-semibold text-gray-700">Operating Hours</label>
               <input 
                 name="operatingHours" 
+                value={formData.operatingHours}
+                onChange={handleChange}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" 
                 placeholder="10:00 AM - 11:00 PM"
-                defaultValue={restaurant.operatingHoursSummary !== 'N/A - N/A' ? restaurant.operatingHoursSummary : ''}
               />
             </div>
 
@@ -195,12 +247,29 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
                 placeholder="Full restaurant address"
               />
             </div>
-
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-semibold text-gray-700">Latitude</label>
+                <input 
+                  type="text" name="latitude" 
+                  value={latInput} onChange={handleChange} 
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors" 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-semibold text-gray-700">Longitude</label>
+                <input 
+                  type="text" name="longitude" 
+                  value={lngInput} onChange={handleChange} 
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors" 
+                />
+              </div>
+            </div>
             {/* Business Settings */}
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
               <div className="space-y-1.5">
-                <label className="text-[13px] font-semibold text-gray-700">Commission %</label>
-                <input type="number" step="any" name="commissionPercentage" value={formData.commissionPercentage} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" placeholder="0" />
+                <label className="text-[13px] font-semibold text-gray-700">Commission (Flat Fee)</label>
+                <input type="number" step="any" name="commissionFlatFee" value={formData.commissionFlatFee} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" placeholder="0" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[13px] font-semibold text-gray-700">Avg Prep Time (mins)</label>
@@ -216,12 +285,22 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
               </div>
               <div className="space-y-1.5 col-span-2">
                 <label className="text-[13px] font-semibold text-gray-700">Cuisine Types (comma separated)</label>
-                <input name="cuisineTypes" value={formData.cuisineTypes?.join(', ') || ''} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" placeholder="Indian, Chinese" />
+                <input name="cuisineInput" value={cuisineInput} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" placeholder="Indian, Chinese" />
               </div>
             </div>
 
             {/* Dietary Options */}
             <div className="flex flex-wrap items-center gap-6 pt-2 pb-2">
+              <label className="flex items-center gap-2 text-[13px] font-bold text-primary cursor-pointer border-r border-gray-200 pr-6">
+                <input 
+                  type="checkbox" 
+                  name="selectAllDietary" 
+                  checked={formData.isPureVeg && formData.isVeganFriendly && formData.hasJainOptions} 
+                  onChange={handleChange} 
+                  className="rounded border-gray-300 text-primary focus:ring-primary w-4 h-4" 
+                />
+                Select All
+              </label>
               <label className="flex items-center gap-2 text-[13px] font-medium text-gray-700 cursor-pointer">
                 <input type="checkbox" name="isPureVeg" checked={formData.isPureVeg} onChange={handleChange} className="rounded border-gray-300 text-[#d72b1f] focus:ring-[#d72b1f] w-4 h-4" />
                 Pure Veg

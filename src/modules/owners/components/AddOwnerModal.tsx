@@ -12,15 +12,26 @@ interface AddOwnerModalProps {
 }
 
 const addOwnerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  phone: z.string().min(10, 'Phone must be at least 10 characters'),
+  name: z.string().min(1, 'Name is required').max(255, 'Name cannot exceed 255 characters'),
+  phone: z.string().min(1, 'Phone number is required'),
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  panNumber: z.string().optional(),
-  gstNumber: z.string().optional(),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  panNumber: z.string().optional().refine(val => !val || val.length === 10, 'PAN must be exactly 10 characters'),
+  gstNumber: z.string().optional().refine(val => !val || val.length === 15, 'GST must be exactly 15 characters'),
   bankAccountNumber: z.string().optional(),
-  bankIfscCode: z.string().optional(),
+  bankIfscCode: z.string().optional().refine(val => !val || val.length === 11, 'IFSC must be exactly 11 characters'),
   bankAccountName: z.string().optional(),
+}).superRefine((data, ctx) => {
+  const { bankAccountNumber, bankIfscCode, bankAccountName } = data;
+  const filledCount = [bankAccountNumber, bankIfscCode, bankAccountName].filter(f => !!f).length;
+  
+  if (filledCount > 0 && filledCount < 3) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'If any banking detail is filled, all three (Account Number, IFSC, and Name) are mandatory.',
+      path: ['bankAccountNumber']
+    });
+  }
 });
 
 export function AddOwnerModal({ isOpen, onClose }: AddOwnerModalProps) {
