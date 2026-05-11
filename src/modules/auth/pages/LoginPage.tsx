@@ -74,7 +74,7 @@ export default function LoginPage() {
       loginMutation.mutate({ email, password });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        const msg = (err as any).errors[0].message;
+        const msg = (err as any).issues?.[0]?.message || 'Validation error';
         setErrorMsg(msg);
         toast.error(msg);
       }

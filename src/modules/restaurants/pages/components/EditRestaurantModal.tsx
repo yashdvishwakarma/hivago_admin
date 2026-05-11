@@ -119,7 +119,7 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
         mutation.mutate(payload);
       } catch (err) {
       if (err instanceof z.ZodError) {
-        const msg = err.errors?.[0]?.message || 'Validation error. Please check your inputs.';
+        const msg = err.issues?.[0]?.message || 'Validation error. Please check your inputs.';
         setErrorMsg(msg);
       } else {
         setErrorMsg('An unexpected error occurred.');
