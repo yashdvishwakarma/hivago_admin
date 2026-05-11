@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { Clock, LogOut } from 'lucide-react';
 import { authService } from '@/core/api/auth';
 import toast from 'react-hot-toast';
 
 export function SessionWarningModal() {
-  const { isAuthenticated, refreshToken, expiresAt, logout, extendSession } = useAuthStore();
+  const { isAuthenticated, refreshToken, expiresAt, rememberMe, logout, extendSession } = useAuthStore();
   const [showWarning, setShowWarning] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -13,50 +13,18 @@ export function SessionWarningModal() {
   // Constants
   const WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before expiry
 
-  useEffect(() => {
-    if (!isAuthenticated || !expiresAt) {
-      setShowWarning(false);
-      return;
-    }
-
-    const checkExpiration = () => {
-      const expTime = new Date(expiresAt).getTime();
-      const now = Date.now();
-      const remaining = expTime - now;
-
-      if (remaining <= 0) {
-        // Force logout when timer ends
-        console.log('[Auth] Session expired, logging out...');
-        logout();
-        setShowWarning(false);
-        window.location.href = '/login';
-      } else if (remaining <= WARNING_THRESHOLD_MS) {
-        // Show warning
-        setShowWarning(true);
-        setTimeLeft(Math.ceil(remaining / 1000));
-      } else {
-        // Hide warning if session was extended
-        setShowWarning(false);
-      }
-    };
-
-    // Check immediately and then every second
-    checkExpiration();
-    const interval = setInterval(checkExpiration, 1000);
-
-    return () => clearInterval(interval);
-  }, [isAuthenticated, expiresAt, logout]);
-
-  const handleStaySignedIn = async () => {
-    if (!refreshToken) return;
+  const handleStaySignedIn = useCallback(async (isAuto = false) => {
+    if (!refreshToken || isRefreshing) return;
     
     setIsRefreshing(true);
     try {
-      console.log('[Auth] Attempting to refresh session...');
+      console.log(`[Auth] ${isAuto ? 'Auto-' : ''}Attempting to refresh session...`);
       const response = await authService.refresh(refreshToken);
       extendSession(response.accessTokenExpiresAt, response.accessToken);
       setShowWarning(false);
-      toast.success('Session extended successfully');
+      if (!isAuto) {
+        toast.success('Session extended successfully');
+      }
     } catch (error) {
       console.error('[Auth] Failed to refresh session:', error);
       toast.error('Failed to extend session. Please log in again.');
@@ -65,7 +33,41 @@ export function SessionWarningModal() {
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [refreshToken, extendSession, logout, isRefreshing]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !expiresAt) {
+      setShowWarning(false);
+      return;
+    }
+
+    const checkExpiration = async () => {
+      const expTime = new Date(expiresAt).getTime();
+      const now = Date.now();
+      const remaining = expTime - now;
+
+      if (remaining <= 0) {
+        console.log('[Auth] Session expired, logging out...');
+        logout();
+        setShowWarning(false);
+        window.location.href = '/login';
+      } else if (remaining <= WARNING_THRESHOLD_MS) {
+        if (rememberMe) {
+          handleStaySignedIn(true);
+        } else {
+          setShowWarning(true);
+          setTimeLeft(Math.ceil(remaining / 1000));
+        }
+      } else {
+        setShowWarning(false);
+      }
+    };
+
+    const interval = setInterval(checkExpiration, 1000);
+    checkExpiration();
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, expiresAt, rememberMe, logout, handleStaySignedIn]);
 
   if (!showWarning) return null;
 
@@ -87,10 +89,11 @@ export function SessionWarningModal() {
 
         <div className="p-6 pt-5 flex flex-col gap-2.5">
           <button
-            onClick={handleStaySignedIn}
-            className="w-full py-2.5 bg-[#d72b1f] hover:bg-[#b91d13] text-white text-[14px] font-bold rounded-xl transition-colors shadow-sm active:scale-[0.98]"
+            onClick={() => handleStaySignedIn(false)}
+            disabled={isRefreshing}
+            className="w-full py-2.5 bg-[#d72b1f] hover:bg-[#b91d13] text-white text-[14px] font-bold rounded-xl transition-colors shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Stay Signed In
+            {isRefreshing ? 'Refreshing...' : 'Stay Signed In'}
           </button>
           <button
             onClick={logout}

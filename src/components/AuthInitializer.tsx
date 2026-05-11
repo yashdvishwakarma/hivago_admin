@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/core/api/auth';
-import toast from 'react-hot-toast';
 
 export const AuthInitializer = ({ children }: { children: React.ReactNode }) => {
-  const { token, refreshToken, expiresAt, login, logout, extendSession, isAuthenticated } = useAuthStore();
+  const { refreshToken, expiresAt, extendSession, isAuthenticated } = useAuthStore();
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
@@ -27,8 +26,6 @@ export const AuthInitializer = ({ children }: { children: React.ReactNode }) => 
           console.log('[Auth] Token refreshed successfully on mount.');
         } catch (error) {
           console.error('[Auth] Failed to refresh token on mount:', error);
-          // If refresh fails, we might want to logout, but maybe only if it's a 401
-          // For now, let's just log it. The interceptor will handle 401s on subsequent requests.
         }
       }
 
