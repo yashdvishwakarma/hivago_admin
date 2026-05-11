@@ -26,11 +26,11 @@ function OwnerRow({
               {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
             <div className="w-10 h-10 rounded-full bg-[#fff5f5] text-[#d72b1f] flex items-center justify-center font-bold text-sm shrink-0">
-              {owner.name.charAt(0).toUpperCase()}
+              {owner.name?.charAt(0).toUpperCase() || '?'}
             </div>
             <div>
-              <div className="font-semibold text-[14px] text-gray-900">{owner.name}</div>
-              <div className="text-[12px] text-gray-400 mt-0.5">ID: {owner.id.substring(0, 8)}...</div>
+              <div className="font-semibold text-[14px] text-gray-900">{owner.name || 'Unknown Owner'}</div>
+              <div className="text-[12px] text-gray-400 mt-0.5">ID: {owner.id?.substring(0, 8) || 'N/A'}...</div>
             </div>
           </div>
         </td>
