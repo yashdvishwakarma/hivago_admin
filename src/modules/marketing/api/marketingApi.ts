@@ -28,11 +28,15 @@ export type PaginatedResp<T> = {
 };
 
 export const marketingApi = {
-  getWaitlist: (params: { search?: string; page: number; pageSize: number }) =>
-    apiClient.get<PaginatedResp<WaitlistEntry>>('/admin/waitlist', { params }),
+  getWaitlist: async (params: { search?: string; page: number; pageSize: number }): Promise<PaginatedResp<WaitlistEntry>> => {
+    const response = await apiClient.get<PaginatedResp<WaitlistEntry>>('/admin/waitlist', { params });
+    return response as unknown as PaginatedResp<WaitlistEntry>;
+  },
 
-  getRestaurantLeads: (params: { search?: string; city?: string; dailyOrders?: number; page: number; pageSize: number }) =>
-    apiClient.get<PaginatedResp<RestaurantLeadEntry>>('/admin/restaurant-leads', { params }),
+  getRestaurantLeads: async (params: { search?: string; city?: string; dailyOrders?: number; page: number; pageSize: number }): Promise<PaginatedResp<RestaurantLeadEntry>> => {
+    const response = await apiClient.get<PaginatedResp<RestaurantLeadEntry>>('/admin/restaurant-leads', { params });
+    return response as unknown as PaginatedResp<RestaurantLeadEntry>;
+  },
 
   exportWaitlist: () => apiClient.get('/admin/waitlist/export', { responseType: 'blob' }),
 

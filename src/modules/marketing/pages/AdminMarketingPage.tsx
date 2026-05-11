@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Download, Users, Store, Calendar, Globe, Phone, Mail } from 'lucide-react';
-import { marketingApi, type WaitlistEntry, type RestaurantLeadEntry } from '../api/marketingApi';
+import { marketingApi } from '../api/marketingApi';
 
 const DAILY_ORDER_OPTIONS = [
   { value: 50,   label: "Up to 50 orders/day" },
