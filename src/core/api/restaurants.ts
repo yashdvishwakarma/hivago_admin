@@ -14,6 +14,7 @@ export interface AdminRestaurant {
   totalOrderCount: number;
   operatingHoursSummary: string;
   createdAt: string;
+  acceptsPickup: boolean;
   // Kept for modal compatibility
   addressLine?: string;
   avgPrepTimeMins?: number;
@@ -22,6 +23,9 @@ export interface AdminRestaurant {
   isVeganFriendly?: boolean;
   hasJainOptions?: boolean;
   minOrderAmount?: number;
+  fssaiNumber?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface RestaurantsResponse {
@@ -46,6 +50,11 @@ export const restaurantService = {
   getRestaurants: async (params?: { isActive?: boolean; search?: string; page?: number; pageSize?: number }): Promise<RestaurantsResponse> => {
     const response = await apiClient.get('/admins/restaurants', { params });
     return response as unknown as RestaurantsResponse;
+  },
+  
+  getRestaurantById: async (id: string): Promise<AdminRestaurant> => {
+    const response = await apiClient.get(`/admins/restaurants/${id}`);
+    return response as unknown as AdminRestaurant;
   },
 
   createRestaurant: async (payload: CreateRestaurantPayload): Promise<any> => {

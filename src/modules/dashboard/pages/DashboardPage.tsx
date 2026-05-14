@@ -314,6 +314,7 @@ export default function DashboardPage() {
                           });
                         }}
                         className="text-gray-400 hover:text-blue-600 transition-colors"
+                        title="View Order Details"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -333,7 +334,9 @@ export default function DashboardPage() {
                       key={idx}
                       className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${tag.toLowerCase() === 'escalated'
                           ? 'bg-[#fff5f5] text-[#d72b1f] border-red-100'
-                          : 'bg-green-50 text-green-700 border-green-100'
+                          : tag.toLowerCase() === 'refunding'
+                            ? 'bg-orange-50 text-orange-700 border-orange-100'
+                            : 'bg-green-50 text-green-700 border-green-100'
                         }`}
                     >
                       {tag}

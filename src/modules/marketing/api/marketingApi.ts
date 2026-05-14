@@ -39,6 +39,5 @@ export const marketingApi = {
   },
 
   exportWaitlist: () => apiClient.get('/admin/waitlist/export', { responseType: 'blob' }),
-
   exportRestaurantLeads: () => apiClient.get('/admin/restaurant-leads/export', { responseType: 'blob' }),
 };

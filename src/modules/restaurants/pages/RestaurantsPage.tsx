@@ -6,6 +6,7 @@ import { restaurantService, type AdminRestaurant } from '@/core/api/restaurants'
 import { AddRestaurantModal } from './components/AddRestaurantModal';
 import { EditRestaurantModal } from './components/EditRestaurantModal';
 import { ToggleConfirmModal } from './components/ToggleConfirmModal';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function RestaurantsPage() {
   const queryClient = useQueryClient();
@@ -13,10 +14,11 @@ export default function RestaurantsPage() {
   const [editingRestaurant, setEditingRestaurant] = useState<AdminRestaurant | null>(null);
   const [toggleConfirmData, setToggleConfirmData] = useState<{ id: string; name: string; isActive: boolean } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery.trim(), 300);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['restaurants', searchQuery],
-    queryFn: () => restaurantService.getRestaurants({ search: searchQuery }),
+    queryKey: ['restaurants', debouncedSearchQuery],
+    queryFn: () => restaurantService.getRestaurants({ search: debouncedSearchQuery }),
   });
 
   const restaurants = data?.restaurants || [];

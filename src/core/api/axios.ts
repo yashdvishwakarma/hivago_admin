@@ -1,7 +1,7 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
-export const API_URL = import.meta.env.VITE_API_URL || 'https://rally-production-2004.up.railway.app/api';
+export const API_URL = import.meta.env.VITE_API_URL;
 
 const apiClient = axios.create({
   baseURL: API_URL,

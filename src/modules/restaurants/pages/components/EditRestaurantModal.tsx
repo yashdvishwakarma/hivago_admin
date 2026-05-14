@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { restaurantService, type AdminRestaurant } from '@/core/api/restaurants';
@@ -20,8 +20,14 @@ const editRestaurantSchema = z.object({
   commissionFlatFee: z.number().min(0, 'Commission must be positive'),
 });
 
-export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaurantModalProps) {
+export function EditRestaurantModal({ isOpen, onClose, restaurant: initialRestaurant }: EditRestaurantModalProps) {
   const queryClient = useQueryClient();
+
+  const { data: restaurant, isLoading: isFetching } = useQuery({
+    queryKey: ['restaurant', initialRestaurant?.id],
+    queryFn: () => restaurantService.getRestaurantById(initialRestaurant!.id),
+    enabled: !!initialRestaurant && isOpen,
+  });
 
   const [formData, setFormData] = useState({
     name: '',
@@ -37,6 +43,7 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
     isPureVeg: false,
     isVeganFriendly: false,
     hasJainOptions: false,
+    acceptsPickup: false,
     latitude: 0,
     longitude: 0
   });
@@ -50,23 +57,24 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
     if (restaurant && isOpen) {
       setFormData({
         name: restaurant.name || '',
-        phone: restaurant.phone !== 'Not Available' ? restaurant.phone : '',
-        email: restaurant.email !== 'Not Available' ? restaurant.email : '',
+        phone: (restaurant.phone && restaurant.phone !== 'Not Available') ? restaurant.phone : '',
+        email: (restaurant.email && restaurant.email !== 'Not Available') ? restaurant.email : '',
         addressLine: restaurant.addressLine || '',
-        operatingHours: restaurant.operatingHoursSummary !== 'N/A - N/A' ? restaurant.operatingHoursSummary : '',
+        operatingHours: (restaurant.operatingHoursSummary && restaurant.operatingHoursSummary !== 'N/A - N/A') ? restaurant.operatingHoursSummary : '',
         commissionFlatFee: restaurant.commissionFlatFee || 0,
         avgPrepTimeMins: restaurant.avgPrepTimeMins ?? 30,
         cuisineTypes: restaurant.cuisineTypes || [],
-        fssaiNumber: '', 
+        fssaiNumber: restaurant.fssaiNumber || '', 
         minOrderAmount: restaurant.minOrderAmount ?? 0,
         isPureVeg: restaurant.isPureVeg || false,
         isVeganFriendly: restaurant.isVeganFriendly || false,
         hasJainOptions: restaurant.hasJainOptions || false,
-        latitude: (restaurant as any).latitude || 0,
-        longitude: (restaurant as any).longitude || 0
+        acceptsPickup: restaurant.acceptsPickup || false,
+        latitude: restaurant.latitude || 0,
+        longitude: restaurant.longitude || 0
       });
-      setLatInput(((restaurant as any).latitude || 0).toString());
-      setLngInput(((restaurant as any).longitude || 0).toString());
+      setLatInput((restaurant.latitude || 0).toString());
+      setLngInput((restaurant.longitude || 0).toString());
       setCuisineInput(restaurant.cuisineTypes?.join(', ') || '');
       setErrorMsg('');
     }
@@ -88,7 +96,7 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
     }
   });
 
-  if (!isOpen || !restaurant) return null;
+  if (!isOpen || !initialRestaurant) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +120,7 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
           hasJainOptions: formData.hasJainOptions,
           minOrderAmount: formData.minOrderAmount,
           fssaiNumber: formData.fssaiNumber,
+          acceptsPickup: formData.acceptsPickup,
           latitude: formData.latitude,
           longitude: formData.longitude
         };
@@ -178,19 +187,26 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">Edit Restaurant - {restaurant.rstCode}</h2>
+          <h2 className="text-lg font-bold text-gray-900">Edit Restaurant - {initialRestaurant.rstCode}</h2>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto">
-          {errorMsg && (
-            <div className="mb-6 p-3 rounded-lg bg-red-50 text-red-600 text-sm font-medium text-center">
-              {errorMsg}
+        <div className="p-6 overflow-y-auto min-h-[300px]">
+          {isFetching ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-sm text-gray-500 font-medium">Fetching restaurant details...</p>
             </div>
-          )}
+          ) : (
+            <>
+              {errorMsg && (
+                <div className="mb-6 p-3 rounded-lg bg-red-50 text-red-600 text-sm font-medium text-center">
+                  {errorMsg}
+                </div>
+              )}
 
           <form id="edit-restaurant-form" onSubmit={handleSubmit} className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
@@ -316,7 +332,27 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant }: EditRestaur
                 Jain Options
               </label>
             </div>
+
+            {/* Pickup Toggle */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 mt-2">
+              <div className="flex flex-col">
+                <span className="text-[14px] font-bold text-gray-900">Pickup orders</span>
+                <span className="text-[12px] text-gray-500 mt-0.5">Allow customers to place pickup orders at this restaurant</span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  name="acceptsPickup"
+                  checked={formData.acceptsPickup}
+                  onChange={handleChange}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#16a34a]"></div>
+              </label>
+            </div>
           </form>
+          </>
+          )}
         </div>
 
         {/* Footer */}
