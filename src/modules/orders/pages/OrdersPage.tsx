@@ -269,8 +269,8 @@ export default function OrdersPage() {
                             customerName: order.customerName,
                             customerPhone: "+91 88888 12345",
                             customerAddress: "Flat 204, Aundh Society, Pune, MH 411007",
-                            customerLatitude: (order as any).latitude,
-                            customerLongitude: (order as any).longitude,
+                            customerLatitude: order.latitude,
+                            customerLongitude: order.longitude,
                             restaurantName: order.restaurantName,
                             restaurantAddress: "Koregaon Park, Pune, MH 411001",
                             items: [
@@ -365,7 +365,7 @@ export default function OrdersPage() {
                     ) : (
                       <Button
                         key={p}
-                        variant={page === p ? "default" : "outline"}
+                        variant={page === p ? "primary" : "outline"}
                         size="sm"
                         onClick={() => setPage(p as number)}
                         className={cn(

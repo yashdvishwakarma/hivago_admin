@@ -16,6 +16,8 @@ export interface Order {
   total: number;
   currency: string;
   createdAt: string; // ISO string
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface OrderStats {

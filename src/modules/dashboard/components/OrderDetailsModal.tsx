@@ -28,6 +28,8 @@ export interface OrderDetailsData {
     status: string;
     time: string;
   }[];
+  customerLatitude?: number;
+  customerLongitude?: number;
   originalOrder?: any;
 }
 
