@@ -29,13 +29,23 @@ export type PaginatedResp<T> = {
 
 export const marketingApi = {
   getWaitlist: async (params: { search?: string; page: number; pageSize: number }): Promise<PaginatedResp<WaitlistEntry>> => {
-    const response = await apiClient.get<PaginatedResp<WaitlistEntry>>('/admin/waitlist', { params });
-    return response as unknown as PaginatedResp<WaitlistEntry>;
+    const response = await (apiClient.get('/admin/waitlist', { params }) as any);
+    return {
+      entries: response?.entries || response?.waitlist || response?.items || [],
+      totalCount: response?.totalCount || 0,
+      page: response?.page || 1,
+      pageSize: response?.pageSize || 20
+    };
   },
 
   getRestaurantLeads: async (params: { search?: string; city?: string; dailyOrders?: number; page: number; pageSize: number }): Promise<PaginatedResp<RestaurantLeadEntry>> => {
-    const response = await apiClient.get<PaginatedResp<RestaurantLeadEntry>>('/admin/restaurant-leads', { params });
-    return response as unknown as PaginatedResp<RestaurantLeadEntry>;
+    const response = await (apiClient.get('/admin/restaurant-leads', { params }) as any);
+    return {
+      entries: response?.leads || response?.entries || response?.items || [],
+      totalCount: response?.totalCount || 0,
+      page: response?.page || 1,
+      pageSize: response?.pageSize || 20
+    };
   },
 
   exportWaitlist: () => apiClient.get('/admin/waitlist/export', { responseType: 'blob' }),

@@ -218,7 +218,7 @@ export default function AdminMarketingPage() {
         {/* Pagination */}
         <div className="px-6 py-4 bg-gray-50/50 border-t flex items-center justify-between">
           <p className="text-[13px] text-gray-500 font-medium">
-            Showing <span className="text-gray-900">{(activeTab === 'waitlist' ? waitlistData : leadsData)?.entries.length || 0}</span> of <span className="text-gray-900">{(activeTab === 'waitlist' ? waitlistData : leadsData)?.totalCount || 0}</span> entries
+            Showing <span className="text-gray-900">{(activeTab === 'waitlist' ? waitlistData : leadsData)?.entries?.length || 0}</span> of <span className="text-gray-900">{(activeTab === 'waitlist' ? waitlistData : leadsData)?.totalCount || 0}</span> entries
           </p>
           <div className="flex items-center gap-2">
             <button
