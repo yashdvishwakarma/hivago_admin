@@ -12,7 +12,7 @@ export function AdminUsersSettings() {
     queryFn: () => adminUserService.getAdminUsers({ pageSize: 100 }),
   });
 
-  const adminUsers = data?.admins || data?.items || [];
+  const adminUsers = data?.admins || [];
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -46,7 +46,7 @@ export function AdminUsersSettings() {
             <p className="text-sm text-gray-500">No admin users found.</p>
           </div>
         ) : (
-          adminUsers.map((admin) => (
+          adminUsers.map((admin: any) => (
             <div key={admin.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center text-[14px] font-bold">

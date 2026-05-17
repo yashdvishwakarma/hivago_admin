@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { adminUserService } from '@/core/api/adminUsers';
-import { Button } from '@/components/ui/Button';
 import { Loader2, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function ProfileSettings() {
-  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -37,9 +35,7 @@ export function ProfileSettings() {
     toast.success('Profile view is read-only as per system policy');
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+
 
   if (isLoading) {
     return (
