@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { adminUserService } from '@/core/api/adminUsers';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import toast from 'react-hot-toast';
@@ -6,43 +8,37 @@ import toast from 'react-hot-toast';
 interface AddAdminModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (admin: any) => void;
+  onSuccess?: () => void;
 }
 
 export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps) {
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
-    fullName: '',
+    name: '',
     email: '',
-    role: 'Operator',
+    role: 'Support' as 'Support' | 'CityAdmin',
     password: '',
   });
-  const [isSaving, setIsSaving] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: adminUserService.createAdminUser,
+    onSuccess: () => {
+      toast.success('Admin user created successfully');
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      onSuccess?.();
+      onClose();
+      setFormData({ name: '', email: '', role: 'Support', password: '' });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to create admin user');
+    }
+  });
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsSaving(false);
-      
-      const initials = formData.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-      
-      onSuccess({
-        id: Math.random().toString(),
-        initials,
-        name: formData.fullName,
-        email: formData.email,
-        role: formData.role,
-        status: 'Active'
-      });
-      
-      toast.success('Admin user created successfully');
-      onClose();
-      setFormData({ fullName: '', email: '', role: 'Operator', password: '' });
-    }, 1000);
+    mutation.mutate(formData);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -67,8 +63,8 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
             <div className="space-y-1.5">
               <label className="text-[13px] font-semibold text-gray-900">Full Name</label>
               <input
-                name="fullName"
-                value={formData.fullName}
+                name="name"
+                value={formData.name}
                 onChange={handleChange}
                 className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white transition-colors"
                 placeholder="Enter full name"
@@ -98,9 +94,8 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
                 className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white transition-colors appearance-none"
                 required
               >
-                <option value="Operator">Operator</option>
                 <option value="Support">Support</option>
-                <option value="Super Admin">Super Admin</option>
+                <option value="CityAdmin">City Admin</option>
               </select>
             </div>
 
@@ -132,7 +127,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
             type="submit" 
             form="add-admin-form"
             className="bg-[#16a34a] hover:bg-[#15803d] text-white font-medium px-6 py-2.5 rounded-lg shadow-sm"
-            isLoading={isSaving}
+            isLoading={mutation.isPending}
           >
             Create Admin
           </Button>
