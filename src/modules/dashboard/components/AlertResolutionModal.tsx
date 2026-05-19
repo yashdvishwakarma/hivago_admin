@@ -275,7 +275,7 @@ export default function AlertResolutionModal({
         <div className="p-5 overflow-y-auto custom-scrollbar">
           
           {/* Recommendation Box */}
-          <div className="bg-[#eff6ff] border border-blue-100 rounded-xl p-4 flex gap-3 mb-5">
+          <div className="bg-[#eff6ff] border border-blue-100 rounded-xl p-4 flex items-start gap-3 mb-5">
             <div className="mt-0.5 text-blue-500 bg-white p-1 rounded-full shadow-sm">
               {React.createElement(config.recommendation.icon, { className: "w-4 h-4" })}
             </div>
@@ -313,6 +313,9 @@ export default function AlertResolutionModal({
                   </button>
                 )}
               </div>
+              {config.context.leftPhone && (
+                <p className="text-[12px] text-gray-500 mt-0.5">{config.context.leftPhone}</p>
+              )}
             </div>
             <div className="text-right">
               <p className="text-[12px] text-gray-500 mb-1">{config.context.rightLabel}</p>
@@ -327,6 +330,9 @@ export default function AlertResolutionModal({
                 )}
                 <p className="text-[14px] font-bold text-gray-900">{config.context.rightValue}</p>
               </div>
+              {config.context.rightPhone && (
+                <p className="text-[12px] text-gray-500 mt-0.5">{config.context.rightPhone}</p>
+              )}
             </div>
           </div>
 
@@ -383,39 +389,7 @@ export default function AlertResolutionModal({
             </div>
           )}
 
-          {/* More Actions Grid (only for failed type based on design) */}
-          {config.moreActionsGrid && (
-            <div className="mb-6">
-              <h3 className="text-[11px] font-bold text-gray-400 tracking-wider uppercase mb-3">
-                More Actions
-              </h3>
-              <div className="flex gap-3">
-                {config.moreActionsGrid.map((btn, idx) => (
-                  <button 
-                    key={idx}
-                    onClick={() => onAction?.(btn.action, btn)}
-                    className="flex-1 py-2.5 rounded-xl font-medium text-[13px] text-gray-600 flex items-center justify-center gap-2 border border-gray-200 border-dashed hover:bg-gray-50 transition-colors"
-                  >
-                    {btn.icon && React.createElement(btn.icon, { className: "w-4 h-4" })}
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Default More Actions (for others) */}
-          {!config.moreActionsGrid && (
-            <div className="mb-6">
-              <h3 className="text-[11px] font-bold text-gray-400 tracking-wider uppercase mb-3">
-                More Actions
-              </h3>
-              <button className="w-full py-3 rounded-xl font-medium text-[13px] text-gray-500 border border-gray-200 border-dashed hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-                <span className="font-bold tracking-widest leading-none mb-1">...</span>
-                Additional Options
-              </button>
-            </div>
-          )}
+
 
           {/* Footer Warning */}
           <div className="bg-gray-50 rounded-xl p-4 flex items-start gap-2 border border-gray-100">

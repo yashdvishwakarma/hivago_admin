@@ -19,8 +19,11 @@ import AlertResolutionModal, { type AlertData } from '../components/AlertResolut
 import AssignRiderModal from '../components/AssignRiderModal';
 import OrderDetailsModal, { type OrderDetailsData } from '../components/OrderDetailsModal';
 import RefundModal from '../components/RefundModal';
+import { ordersService } from '@/core/api/orders';
+import { useAuthStore } from '@/store/authStore';
 
 export default function DashboardPage() {
+  const token = useAuthStore(state => state.token);
   const [selectedAlert, setSelectedAlert] = useState<AlertData | null>(null);
   const [isAssignRiderOpen, setIsAssignRiderOpen] = useState(false);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<OrderDetailsData | null>(null);
@@ -72,18 +75,21 @@ export default function DashboardPage() {
   };
 
   const { data: stats, isLoading: isStatsLoading } = useQuery({
-    queryKey: ['adminStats'],
+    queryKey: ['adminStats', token],
     queryFn: dashboardService.getStats,
+    enabled: !!token,
   });
 
   const { data: alerts, isLoading: isAlertsLoading } = useQuery({
-    queryKey: ['adminAlerts'],
+    queryKey: ['adminAlerts', token],
     queryFn: () => dashboardService.getAlerts(),
+    enabled: !!token,
   });
 
   const { data: liveOrdersData, isLoading: isLiveOrdersLoading } = useQuery({
-    queryKey: ['adminLiveOrders'],
+    queryKey: ['adminLiveOrders', token],
     queryFn: () => dashboardService.getLiveOrders(),
+    enabled: !!token,
   });
 
   // Use live stats if available
@@ -188,6 +194,23 @@ export default function DashboardPage() {
     currentPage * ORDERS_PER_PAGE
   );
 
+  const { data: orderDetails } = useQuery({
+    queryKey: ['adminOrderDetails', selectedAlert?.orderNumber],
+    queryFn: () => {
+      const cleanAlertNum = selectedAlert?.orderNumber?.replace('#', '')?.trim();
+      const matchingOrder = liveOrders.find((o: any) => 
+        o.id.replace('#', '').trim() === cleanAlertNum ||
+        o.originalOrder?.orderId === cleanAlertNum ||
+        o.originalOrder?.orderNumber === cleanAlertNum
+      );
+      
+      const orderId = matchingOrder?.originalOrder?.id || matchingOrder?.originalOrder?.orderId;
+      if (!orderId) throw new Error('Order ID not found');
+      return ordersService.getOrderDetails(orderId);
+    },
+    enabled: !!selectedAlert,
+  });
+
   const enrichedAlert = React.useMemo(() => {
     if (!selectedAlert) return null;
     
@@ -199,19 +222,21 @@ export default function DashboardPage() {
       o.originalOrder?.orderNumber === cleanAlertNum
     );
     
-    if (matchingOrder) {
-      return {
-        ...selectedAlert,
-        restaurantName: selectedAlert.restaurantName || (matchingOrder.restaurant !== 'Restaurant' ? matchingOrder.restaurant : undefined) || matchingOrder.originalOrder?.restaurantName,
-        restaurantPhone: selectedAlert.restaurantPhone || matchingOrder.originalOrder?.restaurantPhone,
-        riderName: selectedAlert.riderName || (matchingOrder.rider !== 'Unassigned' ? matchingOrder.rider : undefined) || matchingOrder.originalOrder?.riderName,
-        customerName: selectedAlert.customerName || (matchingOrder.customer !== 'Customer' ? matchingOrder.customer : undefined) || matchingOrder.originalOrder?.customerName,
-        customerPhone: selectedAlert.customerPhone || matchingOrder.originalOrder?.customerPhone
-      };
-    }
+    const resName = selectedAlert.restaurantName || orderDetails?.restaurantName || (matchingOrder?.restaurant !== 'Restaurant' ? matchingOrder?.restaurant : undefined) || matchingOrder?.originalOrder?.restaurantName;
+    const resPhone = selectedAlert.restaurantPhone || (orderDetails as any)?.restaurantPhone || matchingOrder?.originalOrder?.restaurantPhone;
+    const rName = selectedAlert.riderName || orderDetails?.riderName || (matchingOrder?.rider !== 'Unassigned' ? matchingOrder?.rider : undefined) || matchingOrder?.originalOrder?.riderName;
+    const cName = selectedAlert.customerName || orderDetails?.customerName || (matchingOrder?.customer !== 'Customer' ? matchingOrder?.customer : undefined) || matchingOrder?.originalOrder?.customerName;
+    const cPhone = selectedAlert.customerPhone || (orderDetails as any)?.customerPhone || matchingOrder?.originalOrder?.customerPhone;
     
-    return selectedAlert;
-  }, [selectedAlert, liveOrders]);
+    return {
+      ...selectedAlert,
+      restaurantName: resName,
+      restaurantPhone: resPhone,
+      riderName: rName,
+      customerName: cName,
+      customerPhone: cPhone
+    };
+  }, [selectedAlert, liveOrders, orderDetails]);
 
   return (
     <div className="w-full">
@@ -344,7 +369,11 @@ export default function DashboardPage() {
                       alert.type === 'pending_kyc' ? 'border-purple-200 text-purple-700 hover:bg-purple-50' :
                         'border-red-100 text-[#d72b1f] hover:bg-red-50'
                     }`}>
-                    {alert.actionText}
+                    {alert.actionText || (
+                      alert.message?.toLowerCase().includes('confirm') || alert.title?.toLowerCase().includes('confirm')
+                        ? 'Contact Restaurant'
+                        : 'Resolve'
+                    )}
                   </button>
                 </div>
               </div>

@@ -35,11 +35,11 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant: initialRestau
     email: '',
     addressLine: '',
     operatingHours: '',
-    commissionFlatFee: 0,
-    avgPrepTimeMins: 30,
+    commissionFlatFee: '0',
+    avgPrepTimeMins: '30',
     cuisineTypes: [] as string[],
     fssaiNumber: '',
-    minOrderAmount: 0,
+    minOrderAmount: '0',
     isPureVeg: false,
     isVeganFriendly: false,
     hasJainOptions: false,
@@ -61,11 +61,11 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant: initialRestau
         email: (restaurant.email && restaurant.email !== 'Not Available') ? restaurant.email : '',
         addressLine: restaurant.addressLine || '',
         operatingHours: (restaurant.operatingHoursSummary && restaurant.operatingHoursSummary !== 'N/A - N/A') ? restaurant.operatingHoursSummary : '',
-        commissionFlatFee: restaurant.commissionFlatFee || 0,
-        avgPrepTimeMins: restaurant.avgPrepTimeMins ?? 30,
+        commissionFlatFee: (restaurant.commissionFlatFee ?? 0).toString(),
+        avgPrepTimeMins: (restaurant.avgPrepTimeMins ?? 30).toString(),
         cuisineTypes: restaurant.cuisineTypes || [],
         fssaiNumber: restaurant.fssaiNumber || '', 
-        minOrderAmount: restaurant.minOrderAmount ?? 0,
+        minOrderAmount: (restaurant.minOrderAmount ?? 0).toString(),
         isPureVeg: restaurant.isPureVeg || false,
         isVeganFriendly: restaurant.isVeganFriendly || false,
         hasJainOptions: restaurant.hasJainOptions || false,
@@ -102,27 +102,35 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant: initialRestau
     e.preventDefault();
     setErrorMsg('');
 
+    // Parse numeric values before validation and payload submission
+    const parsedData = {
+      ...formData,
+      commissionFlatFee: Number(formData.commissionFlatFee) || 0,
+      avgPrepTimeMins: Number(formData.avgPrepTimeMins) || 0,
+      minOrderAmount: Number(formData.minOrderAmount) || 0
+    };
+
     try {
-      editRestaurantSchema.parse(formData);
+      editRestaurantSchema.parse(parsedData);
       
         // The backend PUT /api/admins/restaurants/{id} accepts specific fields.
         // We must strip 'email' and 'operatingHours' as they aren't in the schema
         const payload = {
-          name: formData.name,
-          phone: formData.phone,
-          addressLine: formData.addressLine,
-          operatingHours: formData.operatingHours,
-          commissionFlatFee: formData.commissionFlatFee,
-          avgPrepTimeMins: formData.avgPrepTimeMins,
-          cuisineTypes: formData.cuisineTypes,
-          isPureVeg: formData.isPureVeg,
-          isVeganFriendly: formData.isVeganFriendly,
-          hasJainOptions: formData.hasJainOptions,
-          minOrderAmount: formData.minOrderAmount,
-          fssaiNumber: formData.fssaiNumber,
-          acceptsPickup: formData.acceptsPickup,
-          latitude: formData.latitude,
-          longitude: formData.longitude
+          name: parsedData.name,
+          phone: parsedData.phone,
+          addressLine: parsedData.addressLine,
+          operatingHours: parsedData.operatingHours,
+          commissionFlatFee: parsedData.commissionFlatFee,
+          avgPrepTimeMins: parsedData.avgPrepTimeMins,
+          cuisineTypes: parsedData.cuisineTypes,
+          isPureVeg: parsedData.isPureVeg,
+          isVeganFriendly: parsedData.isVeganFriendly,
+          hasJainOptions: parsedData.hasJainOptions,
+          minOrderAmount: parsedData.minOrderAmount,
+          fssaiNumber: parsedData.fssaiNumber,
+          acceptsPickup: parsedData.acceptsPickup,
+          latitude: parsedData.latitude,
+          longitude: parsedData.longitude
         };
         
         mutation.mutate(payload);
@@ -165,19 +173,23 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant: initialRestau
           return;
         }
 
-        if (name === 'selectAllDietary') {
-          setFormData(prev => ({
-            ...prev,
-            isPureVeg: checked,
-            isVeganFriendly: checked,
-            hasJainOptions: checked
-          }));
+        if (name === 'avgPrepTimeMins') {
+          const val = value.replace(/\D/g, '');
+          setFormData(prev => ({ ...prev, avgPrepTimeMins: val }));
+          return;
+        }
+
+        if (name === 'commissionFlatFee' || name === 'minOrderAmount') {
+          const val = value.replace(/[^0-9.]/g, '');
+          const parts = val.split('.');
+          const cleaned = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : val;
+          setFormData(prev => ({ ...prev, [name]: cleaned }));
           return;
         }
 
         setFormData(prev => ({
           ...prev,
-          [name]: type === 'checkbox' ? checked : type === 'number' ? (value === '' ? 0 : parseFloat(value)) : value
+          [name]: type === 'checkbox' ? checked : value
         }));
       };
 
@@ -287,15 +299,39 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant: initialRestau
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
               <div className="space-y-1.5">
                 <label className="text-[13px] font-semibold text-gray-700">Commission (Flat Fee)</label>
-                <input type="number" step="any" name="commissionFlatFee" value={formData.commissionFlatFee} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" placeholder="0" />
+                <input 
+                  type="text" 
+                  inputMode="decimal"
+                  name="commissionFlatFee" 
+                  value={formData.commissionFlatFee} 
+                  onChange={handleChange} 
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" 
+                  placeholder="0" 
+                />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[13px] font-semibold text-gray-700">Avg Prep Time (mins)</label>
-                <input type="number" name="avgPrepTimeMins" value={formData.avgPrepTimeMins} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" placeholder="30" />
+                <input 
+                  type="text" 
+                  inputMode="numeric"
+                  name="avgPrepTimeMins" 
+                  value={formData.avgPrepTimeMins} 
+                  onChange={handleChange} 
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" 
+                  placeholder="30" 
+                />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[13px] font-semibold text-gray-700">Min Order Amount</label>
-                <input type="number" step="any" name="minOrderAmount" value={formData.minOrderAmount} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" placeholder="0" />
+                <input 
+                  type="text" 
+                  inputMode="decimal"
+                  name="minOrderAmount" 
+                  value={formData.minOrderAmount} 
+                  onChange={handleChange} 
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50/50 text-sm focus:ring-1 focus:ring-primary focus:bg-white transition-colors placeholder:text-gray-400" 
+                  placeholder="0" 
+                />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[13px] font-semibold text-gray-700">FSSAI Number</label>
