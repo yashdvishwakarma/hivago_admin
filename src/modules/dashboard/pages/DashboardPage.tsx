@@ -244,6 +244,17 @@ export default function DashboardPage() {
     };
   }, [selectedAlert, liveOrders, orderDetails]);
 
+  const resolvedOrderId = React.useMemo(() => {
+    if (!selectedAlert?.orderNumber) return undefined;
+    const cleanAlertNum = selectedAlert.orderNumber.replace('#', '').trim();
+    const matchingOrder = liveOrders.find((o: any) => 
+      o.id.replace('#', '').trim() === cleanAlertNum ||
+      o.originalOrder?.orderId === cleanAlertNum ||
+      o.originalOrder?.orderNumber === cleanAlertNum
+    );
+    return matchingOrder?.originalOrder?.id || matchingOrder?.originalOrder?.orderId;
+  }, [selectedAlert, liveOrders]);
+
   return (
     <div className="w-full">
       <AlertResolutionModal
@@ -258,6 +269,7 @@ export default function DashboardPage() {
         isOpen={isAssignRiderOpen}
         onClose={() => setIsAssignRiderOpen(false)}
         orderNumber={selectedAlert?.orderNumber || 'OR-0000'}
+        orderId={resolvedOrderId}
       />
 
       <OrderDetailsModal

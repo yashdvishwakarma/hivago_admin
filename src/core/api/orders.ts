@@ -67,4 +67,9 @@ export const ordersService = {
     const response = await apiClient.get('/admins/stats/orders');
     return response as unknown as OrderStats;
   },
+
+  assignRider: async (orderId: string, riderId: string): Promise<any> => {
+    const response = await apiClient.post(`/admin/orders/${orderId}/assign-rider`, { riderId });
+    return response;
+  },
 };
