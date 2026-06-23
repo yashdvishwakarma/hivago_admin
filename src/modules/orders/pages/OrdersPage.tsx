@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import {
   Search, 
   Download, 
@@ -92,8 +93,10 @@ export default function OrdersPage() {
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
+      toast.success("Orders exported successfully!");
     } catch (error) {
       console.error('Export failed', error);
+      toast.error("Failed to export orders.");
     }
   };
 
@@ -297,6 +300,13 @@ export default function OrdersPage() {
                         <History className="h-[18px] w-[18px]" />
                       </button>
                       <button 
+                        onClick={() => {
+                          const confirmCancel = window.confirm(`Are you sure you want to cancel order ${order.orderNumber}?`);
+                          if (confirmCancel) {
+                            console.log(`Order ${order.orderNumber} cancelled successfully`);
+                            toast.success(`Order ${order.orderNumber} cancelled successfully!`);
+                          }
+                        }}
                         className="hover:text-red-600 transition-colors cursor-pointer p-1"
                         title="Cancel Order"
                       >

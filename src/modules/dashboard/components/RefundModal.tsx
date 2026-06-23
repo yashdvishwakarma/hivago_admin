@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface RefundModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export default function RefundModal({ isOpen, onClose, orderNumber, onConfirm }:
     if (onConfirm) {
       onConfirm(reason);
     }
+    toast.success("Refund initiated successfully!");
     onClose();
     setReason('');
   };

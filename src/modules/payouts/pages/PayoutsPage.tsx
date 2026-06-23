@@ -71,6 +71,9 @@ export default function PayoutsPage() {
       queryClient.invalidateQueries({ queryKey: ['payoutSummary'] });
       queryClient.invalidateQueries({ queryKey: ['restaurantPayouts'] });
     },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to place payout on hold');
+    }
   });
 
   const releaseHoldMutation = useMutation({
@@ -80,6 +83,9 @@ export default function PayoutsPage() {
       queryClient.invalidateQueries({ queryKey: ['payoutSummary'] });
       queryClient.invalidateQueries({ queryKey: ['restaurantPayouts'] });
     },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to release hold');
+    }
   });
 
   const retryMutation = useMutation({
@@ -89,6 +95,9 @@ export default function PayoutsPage() {
       queryClient.invalidateQueries({ queryKey: ['payoutSummary'] });
       queryClient.invalidateQueries({ queryKey: ['restaurantPayouts'] });
     },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to retry payout');
+    }
   });
 
   const stats = useMemo(() => {

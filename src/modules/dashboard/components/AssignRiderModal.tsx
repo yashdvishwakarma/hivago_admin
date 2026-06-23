@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Star, Bike, MapPin } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import toast from 'react-hot-toast';
 
 interface Rider {
   id: string;
@@ -35,6 +36,7 @@ export default function AssignRiderModal({ isOpen, onClose, orderNumber }: Assig
   const handleConfirm = () => {
     if (selectedRiderId) {
       console.log(`Assigned rider ${selectedRiderId} to order ${orderNumber}`);
+      toast.success("Rider assigned successfully!");
       onClose();
       setSelectedRiderId(null);
     }

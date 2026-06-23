@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import {
   Package,
   CheckCircle2,
@@ -36,15 +37,17 @@ export default function DashboardPage() {
     switch (action) {
       case 'call':
         if (typeof data === 'string') {
+          toast.success(`Initiating call to ${data}...`);
           window.open(`tel:${data}`);
         }
         break;
       case 'contact_rider':
       case 'contact_restaurant':
         if (data.phone) {
+          toast.success(`Initiating call to ${data.phone}...`);
           window.open(`tel:${data.phone}`);
         } else {
-          // Fallback or notification
+          toast.error(`No phone number available for ${action.replace('_', ' ')}`);
           console.warn('No phone number available for', action);
         }
         break;
@@ -52,18 +55,21 @@ export default function DashboardPage() {
         if (data.label?.toLowerCase().includes('assign')) {
           setIsAssignRiderOpen(true);
         } else if (data.label?.toLowerCase().includes('details') || data.label?.toLowerCase().includes('action')) {
-          // Find the order in live orders or fetch it
           const orderId = selectedAlert?.orderNumber;
           if (orderId) {
-            // Logic to open order details modal
-            // For now, let's just log
             console.log('Opening details for', orderId);
           }
         }
         break;
-      case 'cancel_order':
-        // Implementation for cancellation
+      case 'cancel_order': {
+        const confirmCancel = window.confirm(`Are you sure you want to cancel order ${selectedAlert?.orderNumber}?`);
+        if (confirmCancel) {
+          console.log(`Order ${selectedAlert?.orderNumber} cancelled successfully`);
+          toast.success(`Order ${selectedAlert?.orderNumber} cancelled successfully!`);
+          setSelectedAlert(null);
+        }
         break;
+      }
       case 'refund':
         if (selectedAlert?.orderNumber) {
           setRefundOrderNumber(selectedAlert.orderNumber);

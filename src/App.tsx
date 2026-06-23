@@ -43,7 +43,7 @@ function App() {
   return (
     <AuthInitializer>
       <Suspense fallback={<Loader />}>
-        <Toaster position="bottom-center" toastOptions={{ duration: 3000 }} />
+        <Toaster position="bottom-right" toastOptions={{ duration: 3000 }} />
         <SessionWarningModal />
       <Routes>
         {/* Public Login Route */}

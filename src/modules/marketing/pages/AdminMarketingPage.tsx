@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Download, Users, Store, Calendar, Globe, Phone, Mail } from 'lucide-react';
 import { marketingApi } from '../api/marketingApi';
+import toast from 'react-hot-toast';
 
 const DAILY_ORDER_OPTIONS = [
   { value: 50,   label: "Up to 50 orders/day" },
@@ -45,8 +46,10 @@ export default function AdminMarketingPage() {
       a.download = `${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
+      toast.success(`${activeTab === 'waitlist' ? 'Waitlist' : 'Restaurant leads'} exported successfully!`);
     } catch (error) {
       console.error('Export failed:', error);
+      toast.error('Failed to export marketing data.');
     }
   };
 

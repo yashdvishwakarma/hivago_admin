@@ -119,6 +119,7 @@ export function AddRestaurantModal({ isOpen, onClose }: AddRestaurantModalProps)
       if (err instanceof z.ZodError) {
         const msg = (err as any).issues?.[0]?.message || 'Validation error. Please check your inputs.';
         setErrorMsg(msg);
+        toast.error(msg);
       }
     }
   };

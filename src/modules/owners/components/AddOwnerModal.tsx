@@ -86,8 +86,10 @@ export function AddOwnerModal({ isOpen, onClose }: AddOwnerModalProps) {
       if (err instanceof z.ZodError) {
         const msg = err.issues?.[0]?.message || 'Validation error. Please check your inputs.';
         setErrorMsg(msg);
+        toast.error(msg);
       } else {
         setErrorMsg('An unexpected error occurred.');
+        toast.error('An unexpected error occurred.');
       }
     }
   };
