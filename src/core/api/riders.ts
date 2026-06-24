@@ -5,9 +5,17 @@ export interface AdminRider {
   name: string;
   phone: string;
   vehicleType: string;
+  vehicleNumber?: string;
   kycStatus: 'Pending' | 'Verified' | 'Rejected';
   isActive: boolean;
   isOnline: boolean;
+}
+
+export interface CreateRiderPayload {
+  phone: string;
+  name: string;
+  vehicleType: string;
+  vehicleNumber: string;
 }
 
 export interface RidersResponse {
@@ -58,5 +66,10 @@ export const riderService = {
       newKycStatus: status,
     });
     return response;
+  },
+
+  createRider: async (payload: CreateRiderPayload): Promise<AdminRider> => {
+    const response = await apiClient.post('/admins/riders', payload);
+    return response as unknown as AdminRider;
   },
 };

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Eye, Loader2, Users } from 'lucide-react';
+import { Search, Eye, Loader2, Users, Plus } from 'lucide-react';
 import { riderService, type AdminRider } from '@/core/api/riders';
 import { useDebounce } from '@/hooks/useDebounce';
 import RiderKycModal from '../components/RiderKycModal';
+import AddRiderModal from '../components/AddRiderModal';
+import { Button } from '@/components/ui/Button';
 
 function kycBadge(status: AdminRider['kycStatus']) {
   switch (status) {
@@ -42,6 +44,7 @@ export default function RidersPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline'>('all');
   const [kycFilter, setKycFilter] = useState('');
   const [selectedRider, setSelectedRider] = useState<AdminRider | null>(null);
+  const [isAddRiderOpen, setIsAddRiderOpen] = useState(false);
 
   const debouncedSearch = useDebounce(searchTerm.trim(), 300);
 
@@ -68,9 +71,18 @@ export default function RidersPage() {
 
   return (
     <div className="w-full">
-      <div className="mb-6">
-        <h1 className="text-[22px] font-bold text-gray-900 tracking-tight">Rider Management</h1>
-        <p className="text-[14px] text-gray-500 mt-1">Manage delivery riders and KYC verification</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-[22px] font-bold text-gray-900 tracking-tight">Rider Management</h1>
+          <p className="text-[14px] text-gray-500 mt-1">Manage delivery riders and KYC verification</p>
+        </div>
+        <Button
+          onClick={() => setIsAddRiderOpen(true)}
+          className="flex items-center gap-1.5 bg-[#d72b1f] hover:bg-[#b82218] text-white font-semibold shadow-sm rounded-lg"
+        >
+          <Plus className="w-4.5 h-4.5" />
+          Add Rider
+        </Button>
       </div>
 
       <div className="bg-white rounded-xl border shadow-[0_1px_2px_rgba(0,0,0,0.02)] overflow-hidden">
@@ -227,6 +239,9 @@ export default function RidersPage() {
       {selectedRider && (
         <RiderKycModal rider={selectedRider} onClose={() => setSelectedRider(null)} />
       )}
+
+      {/* Add Rider Modal */}
+      <AddRiderModal isOpen={isAddRiderOpen} onClose={() => setIsAddRiderOpen(false)} />
     </div>
   );
 }
