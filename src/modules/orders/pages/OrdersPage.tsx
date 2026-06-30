@@ -103,15 +103,24 @@ export default function OrdersPage() {
   const getStatusBadgeVariant = (status: string): any => {
     switch (status.toLowerCase()) {
       case 'escalated': return 'escalated';
-      case 'delivering': return 'delivering';
+      case 'delivering':
+      case 'assigned':
+      case 'picked_up':
+      case 'pickedup': return 'delivering';
       case 'preparing': return 'preparing';
-      case 'completed': return 'completed';
+      case 'completed':
+      case 'delivered': return 'completed';
       case 'failed':
-      case 'cancelled': return 'failed';
+      case 'cancelled':
+      case 'rejected': return 'failed';
       case 'readyforpickup':
       case 'ready': return 'success';
       case 'confirmed': return 'info';
-      case 'refunding': return 'refunding';
+      case 'refunding':
+      case 'refunded': return 'refunding';
+      case 'pending':
+      case 'placed':
+      case 'paid': return 'warning';
       default: return 'secondary';
     }
   };
@@ -266,7 +275,7 @@ export default function OrdersPage() {
                             id: order.orderId,
                             orderNumber: order.orderNumber,
                             time: format(new Date(order.createdAt), 'dd/MM/yyyy, HH:mm:ss'),
-                            statusType: ['escalated', 'failed', 'cancelled'].includes(order.status.toLowerCase()) ? 'critical' : ['preparing', 'delivering'].includes(order.status.toLowerCase()) ? 'warning' : 'normal',
+                            statusType: ['escalated', 'failed', 'cancelled', 'rejected', 'refunded'].includes(order.status.toLowerCase()) ? 'critical' : ['preparing', 'delivering', 'assigned', 'picked_up', 'pickedup', 'ready', 'readyforpickup'].includes(order.status.toLowerCase()) ? 'warning' : 'normal',
                             statusTitle: order.status,
                             statusDescription: "Live tracking & updates enabled",
                             customerName: order.customerName,
