@@ -389,7 +389,26 @@ export default function AlertResolutionModal({
             </div>
           )}
 
-
+          {/* Alternative Actions */}
+          {(config as any).moreActionsGrid && (config as any).moreActionsGrid.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-[11px] font-bold text-gray-400 tracking-wider uppercase mb-3">
+                Alternative Actions
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {(config as any).moreActionsGrid.map((btn: any, idx: number) => (
+                  <button
+                    key={idx}
+                    onClick={() => onAction?.(btn.action, btn)}
+                    className="py-2 px-3 rounded-lg font-medium text-[12px] border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Footer Warning */}
           <div className="bg-gray-50 rounded-xl p-4 flex items-start gap-2 border border-gray-100">

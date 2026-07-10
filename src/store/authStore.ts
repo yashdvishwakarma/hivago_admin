@@ -24,8 +24,8 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       expiresAt: null,
-      rememberMe: false,
-      login: (token, refreshToken, user, expiresAt = null, rememberMe = false) => 
+      rememberMe: true,
+      login: (token, refreshToken, user, expiresAt = null, rememberMe = true) => 
         set({ token, refreshToken, user, isAuthenticated: true, expiresAt, rememberMe }),
       logout: () => set({ token: null, refreshToken: null, user: null, isAuthenticated: false, expiresAt: null }),
       extendSession: (newExpiresAt, newToken) => 

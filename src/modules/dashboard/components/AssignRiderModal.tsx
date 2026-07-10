@@ -35,9 +35,10 @@ export default function AssignRiderModal({ isOpen, onClose, orderNumber, orderId
     },
     onSuccess: () => {
       toast.success("Rider assigned successfully!");
-      // Invalidate live orders and order details to update dashboard feed immediately
+      // Invalidate live orders, alerts, and order details to update dashboard feed immediately
       queryClient.invalidateQueries({ queryKey: ['adminLiveOrders'] });
       queryClient.invalidateQueries({ queryKey: ['adminOrderDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['adminAlerts'] });
       onClose();
       setSelectedRiderId(null);
     },

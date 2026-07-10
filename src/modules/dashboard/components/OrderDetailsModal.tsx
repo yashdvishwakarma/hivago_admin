@@ -31,15 +31,15 @@ export interface OrderDetailsData {
   customerLatitude?: number;
   customerLongitude?: number;
   originalOrder?: any;
-}
-
-interface OrderDetailsModalProps {
+}interface OrderDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   order: OrderDetailsData | null;
   onInitiateRefund?: () => void;
+  onAssignRider?: () => void;
+  onCancel?: () => void;
+  onEscalate?: () => void;
 }
-
 function OrderDetailsSkeleton() {
   return (
     <div className="animate-pulse">
@@ -97,7 +97,15 @@ function OrderDetailsSkeleton() {
   );
 }
 
-export default function OrderDetailsModal({ isOpen, onClose, order, onInitiateRefund }: OrderDetailsModalProps) {
+export default function OrderDetailsModal({
+  isOpen,
+  onClose,
+  order,
+  onInitiateRefund,
+  onAssignRider,
+  onCancel,
+  onEscalate,
+}: OrderDetailsModalProps) {
   const realOrderId = order?.orderId || order?.originalOrder?.orderId || order?.originalOrder?.id || order?.id;
 
   const { data: fullOrderDetails, isLoading: isOrderLoading } = useQuery({
@@ -291,13 +299,22 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onInitiateRe
           <div>
             <h3 className="font-bold text-[14px] text-gray-900 mb-3">Admin Actions</h3>
             <div className="flex flex-wrap gap-2">
-              <button className="px-4 py-1.5 rounded-md bg-[#2563eb] text-white text-[12px] font-semibold hover:bg-blue-700 transition-colors">
+              <button 
+                onClick={onAssignRider}
+                className="px-4 py-1.5 rounded-md bg-[#2563eb] text-white text-[12px] font-semibold hover:bg-blue-700 transition-colors"
+              >
                 Assign Rider
               </button>
-              <button className="px-4 py-1.5 rounded-md bg-[#9333ea] text-white text-[12px] font-semibold hover:bg-purple-700 transition-colors">
+              <button 
+                onClick={onEscalate}
+                className="px-4 py-1.5 rounded-md bg-[#9333ea] text-white text-[12px] font-semibold hover:bg-purple-700 transition-colors"
+              >
                 Re-dispatch
               </button>
-              <button className="px-4 py-1.5 rounded-md bg-[#e11d48] text-white text-[12px] font-semibold hover:bg-red-700 transition-colors">
+              <button 
+                onClick={onCancel}
+                className="px-4 py-1.5 rounded-md bg-[#e11d48] text-white text-[12px] font-semibold hover:bg-red-700 transition-colors"
+              >
                 Cancel Order
               </button>
               <button 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   Search, 
@@ -23,7 +23,9 @@ import { cn } from '@/utils/cn';
 import { format } from 'date-fns';
 import OrderDetailsModal, { type OrderDetailsData } from '../../dashboard/components/OrderDetailsModal';
 import RefundModal from '../../dashboard/components/RefundModal';
+import AssignRiderModal from '../../dashboard/components/AssignRiderModal';
 import { useDebounce } from '@/hooks/useDebounce';
+import { CancelOrderModal } from '@/components/ui/CancelOrderModal';
 
 const TABS = [
   { id: 'all', label: 'All Orders', icon: ShoppingBag, activeColor: 'text-[#059669]', activeBg: 'bg-[#ecfdf5]', activeBorder: 'border-[#059669]' },
@@ -38,8 +40,60 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<OrderDetailsData | null>(null);
   const [refundOrderNumber, setRefundOrderNumber] = useState<string | null>(null);
+  const [assignRiderOrder, setAssignRiderOrder] = useState<{ id?: string; orderNumber: string } | null>(null);
+  const [cancelConfirmData, setCancelConfirmData] = useState<{ orderId: string; orderNumber: string } | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 20;
+
+  const detailsOrderId = selectedOrderDetails?.orderId || selectedOrderDetails?.originalOrder?.orderId || selectedOrderDetails?.originalOrder?.id || selectedOrderDetails?.id;
+
+  const queryClient = useQueryClient();
+
+  const cancelOrderMutation = useMutation({
+    mutationFn: ({ orderId, reason, notes }: { orderId: string; reason: string; notes: string }) =>
+      ordersService.cancelOrder(orderId, { reason, notes, forceCancel: true }),
+    onSuccess: () => {
+      toast.success(`Order cancelled successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['orders-raw'] });
+      setCancelConfirmData(null);
+      setSelectedOrderDetails(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to cancel order.');
+    }
+  });
+
+  const refundOrderMutation = useMutation({
+    mutationFn: ({ orderId, reason }: { orderId: string; reason: string }) => ordersService.refundOrder(orderId, reason),
+    onSuccess: () => {
+      toast.success(`Refund initiated successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['orders-raw'] });
+      setRefundOrderNumber(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to initiate refund.');
+    }
+  });
+
+  const escalateOrderMutation = useMutation({
+    mutationFn: (orderId: string) => ordersService.escalateOrder(orderId),
+    onSuccess: () => {
+      toast.success(`Order escalated successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['orders-raw'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to escalate order.');
+    }
+  });
+
+  const findOrderIdByNumber = (num: string) => {
+    const cleanNum = num.replace('#', '').trim();
+    const match = allOrders.find((o: any) => 
+      o.orderNumber.replace('#', '').trim() === cleanNum ||
+      o.orderId === cleanNum
+    );
+    return match?.orderId;
+  };
 
   const debouncedSearchTerm = useDebounce(searchTerm.trim(), 300);
 
@@ -131,6 +185,18 @@ export default function OrdersPage() {
         isOpen={!!selectedOrderDetails}
         onClose={() => setSelectedOrderDetails(null)}
         order={selectedOrderDetails}
+        onAssignRider={() => setAssignRiderOrder({ id: detailsOrderId, orderNumber: selectedOrderDetails?.orderNumber || '' })}
+        onCancel={() => {
+          if (selectedOrderDetails && detailsOrderId) {
+            setCancelConfirmData({ orderId: detailsOrderId, orderNumber: selectedOrderDetails.orderNumber });
+            setSelectedOrderDetails(null);
+          }
+        }}
+        onEscalate={() => {
+          if (selectedOrderDetails && detailsOrderId) {
+            escalateOrderMutation.mutate(detailsOrderId);
+          }
+        }}
         onInitiateRefund={() => {
           if (selectedOrderDetails) {
             setRefundOrderNumber(selectedOrderDetails.orderNumber);
@@ -144,8 +210,35 @@ export default function OrdersPage() {
         onClose={() => setRefundOrderNumber(null)}
         orderNumber={refundOrderNumber}
         onConfirm={(reason) => {
-          console.log(`Refund initiated for ${refundOrderNumber} with reason: ${reason}`);
+          if (refundOrderNumber) {
+            const dbId = findOrderIdByNumber(refundOrderNumber);
+            if (dbId) {
+              refundOrderMutation.mutate({ orderId: dbId, reason });
+            } else {
+              toast.error("Failed to resolve order ID for refund.");
+            }
+          }
         }}
+      />
+
+      <AssignRiderModal
+        isOpen={!!assignRiderOrder}
+        onClose={() => setAssignRiderOrder(null)}
+        orderNumber={assignRiderOrder?.orderNumber || 'OR-0000'}
+        orderId={assignRiderOrder?.id}
+      />
+
+      {/* Cancel Order Modal */}
+      <CancelOrderModal
+        isOpen={!!cancelConfirmData}
+        onClose={() => setCancelConfirmData(null)}
+        onConfirm={(reason, notes) => {
+          if (cancelConfirmData) {
+            cancelOrderMutation.mutate({ orderId: cancelConfirmData.orderId, reason, notes });
+          }
+        }}
+        orderNumber={cancelConfirmData?.orderNumber}
+        isPending={cancelOrderMutation.isPending}
       />
 
       {/* Header */}
@@ -310,11 +403,7 @@ export default function OrdersPage() {
                       </button>
                       <button 
                         onClick={() => {
-                          const confirmCancel = window.confirm(`Are you sure you want to cancel order ${order.orderNumber}?`);
-                          if (confirmCancel) {
-                            console.log(`Order ${order.orderNumber} cancelled successfully`);
-                            toast.success(`Order ${order.orderNumber} cancelled successfully!`);
-                          }
+                          setCancelConfirmData({ orderId: order.orderId, orderNumber: order.orderNumber });
                         }}
                         className="hover:text-red-600 transition-colors cursor-pointer p-1"
                         title="Cancel Order"

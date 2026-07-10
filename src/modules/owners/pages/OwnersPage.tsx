@@ -1,16 +1,20 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { Search, Plus, Users, ChevronDown, ChevronRight, Store } from 'lucide-react';
 import { ownerService, type AdminOwner } from '@/core/api/owners';
 import { restaurantService } from '@/core/api/restaurants';
 import { AddOwnerModal } from '../components/AddOwnerModal';
+import EditBankDetailsModal from '@/components/EditBankDetailsModal';
 
 function OwnerRow({ 
   owner, 
-  associatedRestaurants 
+  associatedRestaurants,
+  onEditBankDetails
 }: { 
   owner: AdminOwner; 
-  associatedRestaurants: any[] 
+  associatedRestaurants: any[];
+  onEditBankDetails: () => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -53,12 +57,20 @@ function OwnerRow({
             <span className="text-[12px] font-bold text-gray-700">{associatedRestaurants.length} Outlets</span>
           </div>
         </td>
+        <td className="px-6 py-4 text-right">
+          <button
+            onClick={onEditBankDetails}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-all shadow-sm hover:border-gray-300"
+          >
+            Bank Details
+          </button>
+        </td>
       </tr>
       
       {/* Expanded Outlets View */}
       {isExpanded && (
         <tr className="bg-gray-50/50 border-b border-gray-100 last:border-0">
-          <td colSpan={4} className="px-6 py-4 pl-[72px]">
+          <td colSpan={5} className="px-6 py-4 pl-[72px]">
             {associatedRestaurants.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {associatedRestaurants.map(rest => (
@@ -88,6 +100,22 @@ function OwnerRow({
 export default function OwnersPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingOwner, setEditingOwner] = useState<AdminOwner | null>(null);
+
+  const queryClient = useQueryClient();
+
+  const updateBankMutation = useMutation({
+    mutationFn: ({ ownerId, payload }: { ownerId: string; payload: any }) => 
+      ownerService.updateBankDetails(ownerId, payload),
+    onSuccess: () => {
+      toast.success("Bank details updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ['owners'] });
+      setEditingOwner(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || "Failed to update bank details.");
+    }
+  });
 
   // Fetch Owners
   const { data: ownersData, isLoading: isLoadingOwners } = useQuery({
@@ -162,12 +190,13 @@ export default function OwnersPage() {
                 <th className="px-6 py-4 font-semibold whitespace-nowrap">Contact Info</th>
                 <th className="px-6 py-4 font-semibold whitespace-nowrap">Status</th>
                 <th className="px-6 py-4 font-semibold whitespace-nowrap">Associated Outlets</th>
+                <th className="px-6 py-4 font-semibold whitespace-nowrap text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoadingOwners ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-sm text-gray-500">
+                  <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500">
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3"></div>
                       Loading owners...
@@ -176,7 +205,7 @@ export default function OwnersPage() {
                 </tr>
               ) : owners.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-sm text-gray-500 flex flex-col items-center">
+                  <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500 flex flex-col items-center">
                     <Users className="w-8 h-8 text-gray-300 mb-3" />
                     No owners found matching your search.
                   </td>
@@ -189,6 +218,7 @@ export default function OwnersPage() {
                       key={owner.id} 
                       owner={owner} 
                       associatedRestaurants={associatedRestaurants} 
+                      onEditBankDetails={() => setEditingOwner(owner)}
                     />
                   );
                 })
@@ -201,6 +231,25 @@ export default function OwnersPage() {
       <AddOwnerModal 
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)} 
+      />
+
+      <EditBankDetailsModal
+        isOpen={!!editingOwner}
+        onClose={() => setEditingOwner(null)}
+        title={`Edit Bank Details - ${editingOwner?.name}`}
+        initialData={editingOwner ? {
+          bankAccountNumber: editingOwner.bankAccountNumber,
+          bankIfscCode: editingOwner.bankIfscCode,
+          bankAccountName: editingOwner.bankAccountName
+        } : null}
+        onConfirm={async (data) => {
+          if (editingOwner) {
+            await updateBankMutation.mutateAsync({
+              ownerId: editingOwner.id,
+              payload: data
+            });
+          }
+        }}
       />
     </div>
   );

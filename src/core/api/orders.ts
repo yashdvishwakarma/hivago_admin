@@ -72,4 +72,23 @@ export const ordersService = {
     const response = await apiClient.post(`/admin/orders/${orderId}/assign-rider`, { riderId });
     return response;
   },
+
+  cancelOrder: async (orderId: string, payload: { reason: string; notes?: string; forceCancel?: boolean }): Promise<any> => {
+    const response = await apiClient.post(`/admin/orders/${orderId}/cancel`, {
+      reason: payload.reason,
+      notes: payload.notes || '',
+      forceCancel: payload.forceCancel ?? true,
+    });
+    return response;
+  },
+
+  refundOrder: async (orderId: string, reason: string): Promise<any> => {
+    const response = await apiClient.post(`/admin/orders/${orderId}/refund`, { reason });
+    return response;
+  },
+
+  escalateOrder: async (orderId: string): Promise<any> => {
+    const response = await apiClient.post(`/admin/orders/${orderId}/escalate`);
+    return response;
+  },
 };

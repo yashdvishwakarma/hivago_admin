@@ -1,5 +1,7 @@
+
+
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   Package,
@@ -22,15 +24,74 @@ import OrderDetailsModal, { type OrderDetailsData } from '../components/OrderDet
 import RefundModal from '../components/RefundModal';
 import { ordersService } from '@/core/api/orders';
 import { useAuthStore } from '@/store/authStore';
+import { CancelOrderModal } from '@/components/ui/CancelOrderModal';
 
 export default function DashboardPage() {
   const token = useAuthStore(state => state.token);
   const [selectedAlert, setSelectedAlert] = useState<AlertData | null>(null);
-  const [isAssignRiderOpen, setIsAssignRiderOpen] = useState(false);
+  const [assignRiderOrder, setAssignRiderOrder] = useState<{ id?: string; orderNumber: string } | null>(null);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<OrderDetailsData | null>(null);
   const [refundOrderNumber, setRefundOrderNumber] = useState<string | null>(null);
+  const [cancelConfirmData, setCancelConfirmData] = useState<{ orderId: string; orderNumber?: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ORDERS_PER_PAGE = 5;
+
+  const detailsOrderId = selectedOrderDetails?.orderId || selectedOrderDetails?.originalOrder?.orderId || selectedOrderDetails?.originalOrder?.id || selectedOrderDetails?.id;
+
+  const queryClient = useQueryClient();
+
+  const cancelOrderMutation = useMutation({
+    mutationFn: ({ orderId, reason, notes }: { orderId: string; reason: string; notes: string }) =>
+      ordersService.cancelOrder(orderId, { reason, notes, forceCancel: true }),
+    onSuccess: () => {
+      toast.success(`Order cancelled successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['adminLiveOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['adminAlerts'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+      setCancelConfirmData(null);
+      setSelectedAlert(null);
+      setSelectedOrderDetails(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to cancel order.');
+    }
+  });
+
+  const refundOrderMutation = useMutation({
+    mutationFn: ({ orderId, reason }: { orderId: string; reason: string }) => ordersService.refundOrder(orderId, reason),
+    onSuccess: () => {
+      toast.success(`Refund initiated successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['adminLiveOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['adminAlerts'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+      setRefundOrderNumber(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to initiate refund.');
+    }
+  });
+
+  const escalateOrderMutation = useMutation({
+    mutationFn: (orderId: string) => ordersService.escalateOrder(orderId),
+    onSuccess: () => {
+      toast.success(`Order escalated successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['adminLiveOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['adminAlerts'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to escalate order.');
+    }
+  });
+
+  const findOrderIdByNumber = (num: string) => {
+    const cleanNum = num.replace('#', '').trim();
+    const match = liveOrders.find((o: any) => 
+      o.id.replace('#', '').trim() === cleanNum ||
+      o.originalOrder?.orderId === cleanNum ||
+      o.originalOrder?.orderNumber === cleanNum
+    );
+    return match?.originalOrder?.id || match?.originalOrder?.orderId;
+  };
 
   const handleAlertAction = (action: string, data: any) => {
     console.log('Alert Action:', action, data);
@@ -53,7 +114,7 @@ export default function DashboardPage() {
         break;
       case 'urgent':
         if (data.label?.toLowerCase().includes('assign')) {
-          setIsAssignRiderOpen(true);
+          setAssignRiderOrder({ id: resolvedOrderId, orderNumber: selectedAlert?.orderNumber || '' });
         } else if (data.label?.toLowerCase().includes('details') || data.label?.toLowerCase().includes('action')) {
           const orderId = selectedAlert?.orderNumber;
           if (orderId) {
@@ -62,12 +123,12 @@ export default function DashboardPage() {
         }
         break;
       case 'cancel_order': {
-        const confirmCancel = window.confirm(`Are you sure you want to cancel order ${selectedAlert?.orderNumber}?`);
-        if (confirmCancel) {
-          console.log(`Order ${selectedAlert?.orderNumber} cancelled successfully`);
-          toast.success(`Order ${selectedAlert?.orderNumber} cancelled successfully!`);
-          setSelectedAlert(null);
+        const orderId = resolvedOrderId;
+        if (!orderId) {
+          toast.error("Order ID not resolved.");
+          break;
         }
+        setCancelConfirmData({ orderId, orderNumber: selectedAlert?.orderNumber });
         break;
       }
       case 'refund':
@@ -75,6 +136,7 @@ export default function DashboardPage() {
           setRefundOrderNumber(selectedAlert.orderNumber);
         }
         break;
+
       default:
         break;
     }
@@ -262,20 +324,32 @@ export default function DashboardPage() {
         onClose={() => setSelectedAlert(null)}
         alert={enrichedAlert}
         onAction={handleAlertAction}
-        onAssignRider={() => setIsAssignRiderOpen(true)}
+        onAssignRider={() => setAssignRiderOrder({ id: resolvedOrderId, orderNumber: selectedAlert?.orderNumber || '' })}
       />
 
       <AssignRiderModal
-        isOpen={isAssignRiderOpen}
-        onClose={() => setIsAssignRiderOpen(false)}
-        orderNumber={selectedAlert?.orderNumber || 'OR-0000'}
-        orderId={resolvedOrderId}
+        isOpen={!!assignRiderOrder}
+        onClose={() => setAssignRiderOrder(null)}
+        orderNumber={assignRiderOrder?.orderNumber || 'OR-0000'}
+        orderId={assignRiderOrder?.id}
       />
 
       <OrderDetailsModal
         isOpen={!!selectedOrderDetails}
         onClose={() => setSelectedOrderDetails(null)}
         order={selectedOrderDetails}
+        onAssignRider={() => setAssignRiderOrder({ id: detailsOrderId, orderNumber: selectedOrderDetails?.orderNumber || '' })}
+        onCancel={() => {
+          if (selectedOrderDetails && detailsOrderId) {
+            setCancelConfirmData({ orderId: detailsOrderId, orderNumber: selectedOrderDetails.orderNumber });
+            setSelectedOrderDetails(null);
+          }
+        }}
+        onEscalate={() => {
+          if (selectedOrderDetails && detailsOrderId) {
+            escalateOrderMutation.mutate(detailsOrderId);
+          }
+        }}
         onInitiateRefund={() => {
           if (selectedOrderDetails) {
             setRefundOrderNumber(selectedOrderDetails.orderNumber);
@@ -289,8 +363,28 @@ export default function DashboardPage() {
         onClose={() => setRefundOrderNumber(null)}
         orderNumber={refundOrderNumber}
         onConfirm={(reason) => {
-          console.log(`Refund initiated for ${refundOrderNumber} with reason: ${reason}`);
+          if (refundOrderNumber) {
+            const dbId = findOrderIdByNumber(refundOrderNumber);
+            if (dbId) {
+              refundOrderMutation.mutate({ orderId: dbId, reason });
+            } else {
+              toast.error("Failed to resolve order ID for refund.");
+            }
+          }
         }}
+      />
+
+      {/* Cancel Order Modal */}
+      <CancelOrderModal
+        isOpen={!!cancelConfirmData}
+        onClose={() => setCancelConfirmData(null)}
+        onConfirm={(reason, notes) => {
+          if (cancelConfirmData) {
+            cancelOrderMutation.mutate({ orderId: cancelConfirmData.orderId, reason, notes });
+          }
+        }}
+        orderNumber={cancelConfirmData?.orderNumber}
+        isPending={cancelOrderMutation.isPending}
       />
 
       {/* Header */}

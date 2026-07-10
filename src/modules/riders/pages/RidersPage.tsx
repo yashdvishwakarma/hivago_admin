@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Search, Eye, Loader2, Users, Plus } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Search, Eye, Loader2, Users, Plus, Unlock } from 'lucide-react';
 import { riderService, type AdminRider } from '@/core/api/riders';
 import { useDebounce } from '@/hooks/useDebounce';
+import toast from 'react-hot-toast';
 import RiderKycModal from '../components/RiderKycModal';
 import AddRiderModal from '../components/AddRiderModal';
 import { Button } from '@/components/ui/Button';
+import { CustomConfirmModal } from '@/components/ui/CustomPopups';
 
 function kycBadge(status: AdminRider['kycStatus']) {
   switch (status) {
@@ -45,6 +47,20 @@ export default function RidersPage() {
   const [kycFilter, setKycFilter] = useState('');
   const [selectedRider, setSelectedRider] = useState<AdminRider | null>(null);
   const [isAddRiderOpen, setIsAddRiderOpen] = useState(false);
+  const [confirmModalData, setConfirmModalData] = useState<{ riderId: string; riderName: string } | null>(null);
+
+  const queryClient = useQueryClient();
+
+  const releaseDeliveryMutation = useMutation({
+    mutationFn: (riderId: string) => riderService.releaseDelivery(riderId),
+    onSuccess: () => {
+      toast.success("Rider's stuck delivery cleared successfully!");
+      queryClient.invalidateQueries({ queryKey: ['riders'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || "Failed to release delivery.");
+    }
+  });
 
   const debouncedSearch = useDebounce(searchTerm.trim(), 300);
 
@@ -137,7 +153,7 @@ export default function RidersPage() {
                 <th scope="col" className="px-6 py-4">Online</th>
                 <th scope="col" className="px-6 py-4">Active</th>
                 <th scope="col" className="px-6 py-4">KYC Status</th>
-                <th scope="col" className="px-6 py-4 text-right">KYC Review</th>
+                <th scope="col" className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -219,13 +235,24 @@ export default function RidersPage() {
 
                     {/* Action */}
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => setSelectedRider(rider)}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                        title="View KYC"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setSelectedRider(rider)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                          title="View KYC & Bank Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setConfirmModalData({ riderId: rider.id, riderName: rider.name });
+                          }}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Release Stuck Delivery"
+                        >
+                          <Unlock className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -242,6 +269,21 @@ export default function RidersPage() {
 
       {/* Add Rider Modal */}
       <AddRiderModal isOpen={isAddRiderOpen} onClose={() => setIsAddRiderOpen(false)} />
+
+      {/* Stuck Delivery Release Confirmation Modal */}
+      <CustomConfirmModal
+        isOpen={!!confirmModalData}
+        onClose={() => setConfirmModalData(null)}
+        onConfirm={() => {
+          if (confirmModalData) {
+            releaseDeliveryMutation.mutate(confirmModalData.riderId);
+          }
+        }}
+        title="Release Stuck Delivery"
+        message={`Are you sure you want to force-clear any stuck delivery for ${confirmModalData?.riderName}?`}
+        confirmText="Release"
+        isDestructive={true}
+      />
     </div>
   );
 }

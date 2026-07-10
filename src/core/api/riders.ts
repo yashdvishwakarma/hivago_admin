@@ -9,6 +9,9 @@ export interface AdminRider {
   kycStatus: 'Pending' | 'Verified' | 'Rejected';
   isActive: boolean;
   isOnline: boolean;
+  bankAccountNumber?: string;
+  bankIfscCode?: string;
+  bankAccountName?: string;
 }
 
 export interface CreateRiderPayload {
@@ -71,5 +74,23 @@ export const riderService = {
   createRider: async (payload: CreateRiderPayload): Promise<AdminRider> => {
     const response = await apiClient.post('/admins/riders', payload);
     return response as unknown as AdminRider;
+  },
+
+  getRiderById: async (riderId: string): Promise<AdminRider> => {
+    const response = await apiClient.get(`/admins/riders/${riderId}`);
+    return response as unknown as AdminRider;
+  },
+
+  releaseDelivery: async (riderId: string): Promise<any> => {
+    const response = await apiClient.post(`/admin/riders/${riderId}/release-delivery`);
+    return response;
+  },
+
+  updateBankDetails: async (
+    riderId: string,
+    payload: { bankAccountNumber: string; bankIfscCode: string; bankAccountName: string }
+  ): Promise<any> => {
+    const response = await apiClient.put(`/admin/riders/${riderId}/bank`, payload);
+    return response;
   },
 };

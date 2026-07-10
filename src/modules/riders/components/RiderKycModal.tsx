@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { riderService, type AdminRider } from '@/core/api/riders';
+import EditBankDetailsModal from '@/components/EditBankDetailsModal';
 
 // Flexible document shape — API may use any of these URL field names
 type KycDoc = Record<string, any>;
@@ -128,6 +129,26 @@ function DocCard({ doc }: { doc: KycDoc }) {
 
 export default function RiderKycModal({ rider, onClose }: RiderKycModalProps) {
   const queryClient = useQueryClient();
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+
+  const { data: fullRider, refetch: refetchRider } = useQuery({
+    queryKey: ['rider-details', rider.id],
+    queryFn: () => riderService.getRiderById(rider.id),
+    initialData: rider
+  });
+
+  const updateBankMutation = useMutation({
+    mutationFn: (payload: { bankAccountNumber: string; bankIfscCode: string; bankAccountName: string }) => 
+      riderService.updateBankDetails(rider.id, payload),
+    onSuccess: () => {
+      toast.success("Bank details updated successfully!");
+      refetchRider();
+      queryClient.invalidateQueries({ queryKey: ['riders'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || "Failed to update bank details.");
+    }
+  });
 
   // kycStatus already comes from the riders list — no separate GET needed
   const overallStatus = rider.kycStatus;
@@ -244,7 +265,56 @@ export default function RiderKycModal({ rider, onClose }: RiderKycModalProps) {
 
             </>
           )}
+
+          {/* Bank Account Details */}
+          <div className="mt-6 border-t border-gray-100 pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+                Bank Account Details
+              </h3>
+              <button
+                onClick={() => setIsBankModalOpen(true)}
+                className="text-[12px] font-semibold text-[#d72b1f] hover:text-red-700 transition-colors"
+              >
+                Edit Bank Details
+              </button>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-3 gap-4 border border-gray-100">
+              <div>
+                <span className="block text-[11px] text-gray-400 font-medium uppercase">Holder Name</span>
+                <span className="text-[13px] font-bold text-gray-900 mt-1 block">
+                  {fullRider?.bankAccountName || '—'}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[11px] text-gray-400 font-medium uppercase">Account Number</span>
+                <span className="text-[13px] font-bold text-gray-900 mt-1 block">
+                  {fullRider?.bankAccountNumber || '—'}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[11px] text-gray-400 font-medium uppercase">IFSC Code</span>
+                <span className="text-[13px] font-bold text-gray-900 mt-1 block">
+                  {fullRider?.bankIfscCode || '—'}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <EditBankDetailsModal
+          isOpen={isBankModalOpen}
+          onClose={() => setIsBankModalOpen(false)}
+          title={`Edit Bank Details - ${rider.name}`}
+          initialData={fullRider ? {
+            bankAccountNumber: fullRider.bankAccountNumber,
+            bankIfscCode: fullRider.bankIfscCode,
+            bankAccountName: fullRider.bankAccountName
+          } : null}
+          onConfirm={async (data) => {
+            await updateBankMutation.mutateAsync(data);
+          }}
+        />
 
         {/* ── Footer: Approve / Reject ── */}
         {normalise(overallStatus) === 'pending' && !isLoading && (

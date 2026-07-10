@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/Button';
 import { payoutService, type PayoutStatus } from '@/core/api/payouts';
 import OrderLevelBreakdown from '../components/OrderLevelBreakdown';
 import toast from 'react-hot-toast';
+import { CustomPromptModal } from '@/components/ui/CustomPopups';
 
 export default function PayoutsPage() {
   const [primaryTab, setPrimaryTab] = useState<'restaurant' | 'rider'>('restaurant');
@@ -33,6 +34,7 @@ export default function PayoutsPage() {
     rowId: string | null;
     rect: DOMRect | null;
   }>({ isOpen: false, rowId: null, rect: null });
+  const [holdModalData, setHoldModalData] = useState<{ payoutId: string; isRider: boolean } | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -52,6 +54,24 @@ export default function PayoutsPage() {
       pageSize
     }),
     enabled: primaryTab === 'restaurant',
+  });
+
+  // Rider Summary Query
+  const { data: riderSummary } = useQuery({
+    queryKey: ['riderPayoutSummary'],
+    queryFn: payoutService.getRiderPayoutSummary,
+    enabled: primaryTab === 'rider',
+  });
+
+  // Rider Payouts List Query
+  const { data: riderPayoutsData, isLoading: isLoadingRiderPayouts } = useQuery({
+    queryKey: ['riderPayouts', secondaryTab, currentPage],
+    queryFn: () => payoutService.getRiderPayouts({
+      status: secondaryTab || undefined,
+      page: currentPage,
+      pageSize
+    }),
+    enabled: primaryTab === 'rider',
   });
 
   const payNowMutation = useMutation({
@@ -100,20 +120,77 @@ export default function PayoutsPage() {
     }
   });
 
+  const payRiderNowMutation = useMutation({
+    mutationFn: payoutService.payRiderNow,
+    onSuccess: (data) => {
+      toast.success(`Rider payout triggered! Txn Ref: ${data.transactionReference}`);
+      queryClient.invalidateQueries({ queryKey: ['riderPayoutSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['riderPayouts'] });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to trigger rider payout'),
+  });
+
+  const holdRiderMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) => payoutService.holdRiderPayout(id, reason),
+    onSuccess: () => {
+      toast.success('Rider payout placed on hold');
+      queryClient.invalidateQueries({ queryKey: ['riderPayoutSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['riderPayouts'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to place rider payout on hold');
+    }
+  });
+
+  const releaseRiderHoldMutation = useMutation({
+    mutationFn: payoutService.releaseRiderHold,
+    onSuccess: () => {
+      toast.success('Rider hold released');
+      queryClient.invalidateQueries({ queryKey: ['riderPayoutSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['riderPayouts'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to release rider hold');
+    }
+  });
+
+  const retryRiderMutation = useMutation({
+    mutationFn: payoutService.retryRiderPayout,
+    onSuccess: () => {
+      toast.success('Rider payout re-queued for retry');
+      queryClient.invalidateQueries({ queryKey: ['riderPayoutSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['riderPayouts'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to retry rider payout');
+    }
+  });
+
   const stats = useMemo(() => {
+    if (primaryTab === 'rider') {
+      if (!riderSummary) return [];
+      const nextRiderDate = new Date(riderSummary.nextAutoRunAtUtc);
+      const lastAutoRunVal = riderSummary.lastAutoRun 
+        ? `${new Date(riderSummary.lastAutoRun.atUtc).toLocaleString()} • ₹${riderSummary.lastAutoRun.totalPaid.toLocaleString()}`
+        : '—';
+      return [
+        { label: 'Total Riders Pending', value: riderSummary.pendingCount.toString(), type: 'neutral', icon: <Clock className="w-4 h-4 text-[#ea580c]" /> },
+        { label: 'Total Earnings', value: `₹${(riderSummary.totalEarnings ?? 0).toLocaleString()}`, type: 'neutral', icon: <DollarSign className="w-4 h-4 text-[#059669]" /> },
+        { label: 'Subsidy Impact', value: `₹${(riderSummary.subsidyImpact ?? 0).toLocaleString()}`, type: 'danger', icon: <TrendingDown className="w-4 h-4 text-[#d72b1f]" /> },
+        { label: 'On Hold', value: riderSummary.onHoldCount.toString(), type: 'neutral', icon: <Pause className="w-4 h-4" /> },
+        { 
+          label: 'Next Auto-run', 
+          value: nextRiderDate.toLocaleString('default', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }), 
+          type: 'neutral', 
+          icon: null 
+        },
+        { label: 'Last Auto-run', value: lastAutoRunVal, type: 'neutral', icon: null }
+      ];
+    }
+
     if (!summary) return [];
 
     const nextDate = new Date(summary.nextAutoRunAtUtc);
-
-    if (primaryTab === 'rider') {
-      return [
-        { label: 'Total Riders Pending', value: '28', type: 'neutral', icon: <Clock className="w-4 h-4 text-[#ea580c]" /> },
-        { label: 'Total Earnings', value: '₹1,12,340', type: 'neutral', icon: <DollarSign className="w-4 h-4 text-[#059669]" /> },
-        { label: 'Subsidy Impact', value: '₹28,972', type: 'danger', icon: <TrendingDown className="w-4 h-4 text-[#d72b1f]" /> },
-        { label: 'Next Auto-run', value: `Apr 17, 2026`, type: 'neutral', icon: null },
-        { label: 'Last Auto-run', value: `Apr 14 • Paid`, type: 'neutral', icon: null }
-      ];
-    }
 
     return [
       { label: 'Pending Payouts', value: summary.pendingCount.toString(), type: 'neutral', icon: null },
@@ -140,8 +217,8 @@ export default function PayoutsPage() {
     );
   }
 
-  const payouts = payoutsData?.items || [];
-  const isLoading = isLoadingPayouts;
+  const payouts = primaryTab === 'restaurant' ? (payoutsData?.items || []) : (riderPayoutsData?.items || []);
+  const isLoading = primaryTab === 'restaurant' ? isLoadingPayouts : isLoadingRiderPayouts;
 
   return (
     <div className="w-full max-w-7xl pb-10">
@@ -321,10 +398,10 @@ export default function PayoutsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && primaryTab === 'restaurant' ? (
+            {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i} className="animate-pulse">
-                  {Array.from({ length: 6 }).map((_, j) => (
+                  {Array.from({ length: primaryTab === 'restaurant' ? 6 : 7 }).map((_, j) => (
                     <TableCell key={j}><div className="h-4 bg-gray-100 rounded w-full"></div></TableCell>
                   ))}
                 </TableRow>
@@ -336,7 +413,7 @@ export default function PayoutsPage() {
                     No payout data available
                   </TableCell>
                 </TableRow>
-              ) : payouts.map((row) => {
+              ) : (payouts as any[]).map((row) => {
               const isExpanded = selectedPayoutId === row.payoutId;
               return (
                 <React.Fragment key={row.payoutId}>
@@ -414,14 +491,87 @@ export default function PayoutsPage() {
               );
             })
             ) : (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12">
-                  <div className="flex flex-col items-center gap-2 text-gray-400">
-                    <Bike className="w-8 h-8 opacity-20" />
-                    <p className="text-sm">Rider Payout interface is currently in maintenance.</p>
-                  </div>
-                </TableCell>
-              </TableRow>
+              payouts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    No rider payout data available
+                  </TableCell>
+                </TableRow>
+              ) : payouts.map((row: any) => {
+              const isExpanded = selectedPayoutId === row.payoutId;
+              return (
+                <React.Fragment key={row.payoutId}>
+                  <TableRow 
+                    className="hover:bg-gray-50/50 group cursor-pointer border-b border-gray-100 last:border-0"
+                    onClick={() => setSelectedPayoutId(isExpanded ? null : row.payoutId)}
+                  >
+                    <TableCell className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <ChevronDown className={cn(
+                          "w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-transform duration-200",
+                          isExpanded && "rotate-180"
+                        )} />
+                        <span className="text-[14px] font-bold text-gray-900">{row.displayName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4 px-6 text-[14px] text-gray-700">{row.deliveryCount}</TableCell>
+                    <TableCell className="py-4 px-6 text-[14px] font-bold text-gray-900">₹{row.earnings.toLocaleString()}</TableCell>
+                    <TableCell className="py-4 px-6 text-[14px] font-bold text-gray-900">₹{row.incentives.toLocaleString()}</TableCell>
+                    <TableCell className="py-4 px-6 text-[15px] font-bold text-[#059669]">₹{row.finalPayout.toLocaleString()}</TableCell>
+                    <TableCell className="py-4 px-6">
+                      <div className="flex flex-col items-start gap-1">
+                        <span className={cn(
+                          "px-2.5 py-0.5 rounded-md text-[11px] font-bold border",
+                          row.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          row.status === 'Failed' ? 'bg-red-50 text-red-600 border-red-200' :
+                          row.status === 'Processing' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                          row.status === 'OnHold' ? 'bg-gray-100 text-gray-600 border-gray-200' :
+                          'bg-green-50 text-green-700 border-green-200'
+                        )}>
+                          {row.status}
+                        </span>
+                        <span className="text-[11px] text-gray-400 whitespace-nowrap">
+                          {row.status === 'Pending' ? 'Next: Monday 6 AM' : 
+                           row.status === 'Paid' ? `Paid: ${new Date(row.paidAtUtc!).toLocaleDateString()}` :
+                           row.statusNote || row.status}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4 px-6 text-right relative">
+                      <button 
+                        disabled={row.status === 'Processing'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (dropdownState.isOpen && dropdownState.rowId === row.payoutId) {
+                            setDropdownState({ isOpen: false, rowId: null, rect: null });
+                          } else {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setDropdownState({ isOpen: true, rowId: row.payoutId, rect });
+                          }
+                        }} 
+                        className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors ml-auto flex items-center justify-center relative z-10 disabled:opacity-30"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </TableCell>
+                  </TableRow>
+
+                  {/* Expanded Summary */}
+                  {isExpanded && (
+                    <TableRow className="bg-gray-50/30 border-b border-gray-100">
+                      <TableCell colSpan={7} className="p-0">
+                        <div className="p-6 pt-4 animate-in fade-in duration-200 text-center">
+                          <p className="text-gray-500 text-sm italic">Batch ID: {row.payoutId} • Rider ID: {row.riderId} • Created: {new Date(row.createdAtUtc).toLocaleString()}</p>
+                          {row.transactionReference && (
+                            <p className="text-gray-500 text-xs mt-1">Transaction Ref: {row.transactionReference}</p>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              );
+            })
             )}
           </TableBody>
         </Table>
@@ -446,15 +596,21 @@ export default function PayoutsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             {(() => {
-              const row = payouts.find(r => r.payoutId === dropdownState.rowId);
+              const row = (payouts as any[]).find(r => r.payoutId === dropdownState.rowId);
               if (!row) return null;
+
+              const isRider = primaryTab === 'rider';
 
               return (
                 <>
                   {(row.status === 'Pending' || row.status === 'OnHold') && (
                     <button 
                       onClick={() => {
-                        payNowMutation.mutate(row.payoutId);
+                        if (isRider) {
+                          payRiderNowMutation.mutate(row.payoutId);
+                        } else {
+                          payNowMutation.mutate(row.payoutId);
+                        }
                         setDropdownState({ isOpen: false, rowId: null, rect: null });
                       }}
                       className="px-4 py-2.5 text-[13px] font-bold text-[#059669] hover:bg-green-50 text-left transition-colors flex items-center gap-2"
@@ -467,8 +623,7 @@ export default function PayoutsPage() {
                   {row.status === 'Pending' && (
                     <button 
                       onClick={() => {
-                        const reason = window.prompt('Reason for hold:');
-                        if (reason !== null) holdMutation.mutate({ id: row.payoutId, reason });
+                        setHoldModalData({ payoutId: row.payoutId, isRider });
                         setDropdownState({ isOpen: false, rowId: null, rect: null });
                       }}
                       className="px-4 py-2.5 text-[13px] font-medium text-amber-700 hover:bg-amber-50 text-left transition-colors flex items-center gap-2"
@@ -481,7 +636,11 @@ export default function PayoutsPage() {
                   {row.status === 'OnHold' && (
                     <button 
                       onClick={() => {
-                        releaseHoldMutation.mutate(row.payoutId);
+                        if (isRider) {
+                          releaseRiderHoldMutation.mutate(row.payoutId);
+                        } else {
+                          releaseHoldMutation.mutate(row.payoutId);
+                        }
                         setDropdownState({ isOpen: false, rowId: null, rect: null });
                       }}
                       className="px-4 py-2.5 text-[13px] font-medium text-blue-700 hover:bg-blue-50 text-left transition-colors flex items-center gap-2"
@@ -494,7 +653,11 @@ export default function PayoutsPage() {
                   {row.status === 'Failed' && (
                     <button 
                       onClick={() => {
-                        retryMutation.mutate(row.payoutId);
+                        if (isRider) {
+                          retryRiderMutation.mutate(row.payoutId);
+                        } else {
+                          retryMutation.mutate(row.payoutId);
+                        }
                         setDropdownState({ isOpen: false, rowId: null, rect: null });
                       }}
                       className="px-4 py-2.5 text-[13px] font-medium text-gray-700 hover:bg-gray-50 text-left transition-colors flex items-center gap-2"
@@ -504,17 +667,20 @@ export default function PayoutsPage() {
                     </button>
                   )}
 
-                  <div className="h-[1px] bg-gray-100 my-1" />
-                  
-                  <button 
-                    onClick={() => {
-                      setSelectedRestaurantForDetails({ id: row.ownerId, name: row.displayName });
-                      setDropdownState({ isOpen: false, rowId: null, rect: null });
-                    }}
-                    className="px-4 py-2.5 text-[13px] font-medium text-gray-700 hover:bg-gray-50 text-left transition-colors"
-                  >
-                    View Breakdown
-                  </button>
+                  {!isRider && (
+                    <>
+                      <div className="h-[1px] bg-gray-100 my-1" />
+                      <button 
+                        onClick={() => {
+                          setSelectedRestaurantForDetails({ id: row.ownerId, name: row.displayName });
+                          setDropdownState({ isOpen: false, rowId: null, rect: null });
+                        }}
+                        className="px-4 py-2.5 text-[13px] font-medium text-gray-700 hover:bg-gray-50 text-left transition-colors"
+                      >
+                        View Breakdown
+                      </button>
+                    </>
+                  )}
                 </>
               );
             })()}
@@ -522,6 +688,25 @@ export default function PayoutsPage() {
         </>,
         document.body
       )}
+
+      {/* Hold Payout Reason Modal */}
+      <CustomPromptModal
+        isOpen={!!holdModalData}
+        onClose={() => setHoldModalData(null)}
+        onConfirm={(reason) => {
+          if (holdModalData) {
+            if (holdModalData.isRider) {
+              holdRiderMutation.mutate({ id: holdModalData.payoutId, reason });
+            } else {
+              holdMutation.mutate({ id: holdModalData.payoutId, reason });
+            }
+          }
+        }}
+        title="Hold Payout"
+        message="Provide a reason for placing this payout on hold. This will be recorded and visible in the audit trail."
+        placeholder="e.g. Pending KYC verification..."
+        confirmText="Place on Hold"
+      />
     </div>
   );
 }
