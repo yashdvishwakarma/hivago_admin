@@ -82,13 +82,16 @@ export const ordersService = {
     return response;
   },
 
-  refundOrder: async (orderId: string, reason: string): Promise<any> => {
-    const response = await apiClient.post(`/admin/orders/${orderId}/refund`, { reason });
+  refundOrder: async (orderId: string, payload?: { amount?: number }): Promise<any> => {
+    const response = await apiClient.post(`/admin/orders/${orderId}/refund`, {
+      amount: payload?.amount ?? null,
+      forceRefund: true,
+    });
     return response;
   },
 
-  escalateOrder: async (orderId: string): Promise<any> => {
-    const response = await apiClient.post(`/admin/orders/${orderId}/escalate`);
+  escalateOrder: async (orderId: string, reason?: string): Promise<any> => {
+    const response = await apiClient.post(`/admin/orders/${orderId}/escalate`, { reason: reason || '' });
     return response;
   },
 };

@@ -4,13 +4,17 @@ import { Modal } from './Modal';
 import { Button } from './Button';
 
 const CANCEL_REASONS = [
-  { value: 'CustomerRequested', label: 'Customer Requested' },
+  { value: 'CustomerRequested',    label: 'Customer Requested' },
   { value: 'RestaurantUnavailable', label: 'Restaurant Unavailable' },
-  { value: 'RiderUnavailable', label: 'No Rider Available' },
-  { value: 'FraudSuspected', label: 'Fraud Suspected' },
-  { value: 'ItemUnavailable', label: 'Item Unavailable' },
-  { value: 'DuplicateOrder', label: 'Duplicate Order' },
-  { value: 'Other', label: 'Other' },
+  { value: 'RestaurantClosed',     label: 'Restaurant Closed' },
+  { value: 'ItemsOutOfStock',      label: 'Items Out of Stock' },
+  { value: 'NoRidersAvailable',    label: 'No Riders Available' },
+  { value: 'DeliveryAddressIssue', label: 'Delivery Address Issue' },
+  { value: 'PaymentFailed',        label: 'Payment Failed' },
+  { value: 'Timeout',              label: 'Order Timed Out' },
+  { value: 'FraudSuspected',       label: 'Fraud Suspected' },
+  { value: 'SystemError',          label: 'System Error' },
+  { value: 'Other',                label: 'Other' },
 ];
 
 interface CancelOrderModalProps {

@@ -58,7 +58,7 @@ export default function DashboardPage() {
   });
 
   const refundOrderMutation = useMutation({
-    mutationFn: ({ orderId, reason }: { orderId: string; reason: string }) => ordersService.refundOrder(orderId, reason),
+    mutationFn: (orderId: string) => ordersService.refundOrder(orderId),
     onSuccess: () => {
       toast.success(`Refund initiated successfully!`);
       queryClient.invalidateQueries({ queryKey: ['adminLiveOrders'] });
@@ -362,11 +362,11 @@ export default function DashboardPage() {
         isOpen={!!refundOrderNumber}
         onClose={() => setRefundOrderNumber(null)}
         orderNumber={refundOrderNumber}
-        onConfirm={(reason) => {
+        onConfirm={() => {
           if (refundOrderNumber) {
             const dbId = findOrderIdByNumber(refundOrderNumber);
             if (dbId) {
-              refundOrderMutation.mutate({ orderId: dbId, reason });
+              refundOrderMutation.mutate(dbId);
             } else {
               toast.error("Failed to resolve order ID for refund.");
             }

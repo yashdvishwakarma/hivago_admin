@@ -18,6 +18,15 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Prevent aggressive browser/proxy caching by appending a timestamp to GET requests
+    if (config.method?.toUpperCase() === 'GET') {
+      config.params = {
+        ...config.params,
+        _ts: Date.now()
+      };
+    }
+    
     return config;
   },
   (error) => {
