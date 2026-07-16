@@ -29,8 +29,6 @@ export default function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: (payload: LoginPayload) => authService.login(payload),
     onSuccess: (data) => {
-      console.log('Login Response:', data); // Helps with debugging
-      
       const rawData = data as any;
       
       // The API returns accessToken, adminId, name, role

@@ -94,7 +94,6 @@ export default function DashboardPage() {
   };
 
   const handleAlertAction = (action: string, data: any) => {
-    console.log('Alert Action:', action, data);
     switch (action) {
       case 'call':
         if (typeof data === 'string') {
@@ -115,11 +114,6 @@ export default function DashboardPage() {
       case 'urgent':
         if (data.label?.toLowerCase().includes('assign')) {
           setAssignRiderOrder({ id: resolvedOrderId, orderNumber: selectedAlert?.orderNumber || '' });
-        } else if (data.label?.toLowerCase().includes('details') || data.label?.toLowerCase().includes('action')) {
-          const orderId = selectedAlert?.orderNumber;
-          if (orderId) {
-            console.log('Opening details for', orderId);
-          }
         }
         break;
       case 'cancel_order': {

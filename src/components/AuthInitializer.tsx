@@ -19,11 +19,9 @@ export const AuthInitializer = ({ children }: { children: React.ReactNode }) => 
       const now = Date.now();
 
       if (expiryTime - now < buffer) {
-        console.log('[Auth] Token expired or expiring soon, attempting refresh...');
         try {
           const response = await authService.refresh(refreshToken);
           extendSession(response.accessTokenExpiresAt, response.accessToken);
-          console.log('[Auth] Token refreshed successfully on mount.');
         } catch (error) {
           console.error('[Auth] Failed to refresh token on mount:', error);
         }
