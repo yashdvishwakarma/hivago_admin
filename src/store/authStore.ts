@@ -11,7 +11,7 @@ interface AuthState {
   rememberMe: boolean;
   login: (token: string, refreshToken: string, user: User, expiresAt?: string | null, rememberMe?: boolean) => void;
   logout: () => void;
-  extendSession: (newExpiresAt: string, newToken?: string) => void;
+  extendSession: (newExpiresAt: string, newToken?: string, newRefreshToken?: string) => void;
 }
 
 const STORAGE_NAME = 'hivago-auth-storage';
@@ -24,14 +24,15 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       expiresAt: null,
-      rememberMe: false,
-      login: (token, refreshToken, user, expiresAt = null, rememberMe = false) => 
+      rememberMe: true,
+      login: (token, refreshToken, user, expiresAt = null, rememberMe = true) => 
         set({ token, refreshToken, user, isAuthenticated: true, expiresAt, rememberMe }),
       logout: () => set({ token: null, refreshToken: null, user: null, isAuthenticated: false, expiresAt: null }),
-      extendSession: (newExpiresAt, newToken) => 
+      extendSession: (newExpiresAt, newToken, newRefreshToken) => 
         set((state) => ({ 
           expiresAt: newExpiresAt, 
-          token: newToken || state.token 
+          token: newToken || state.token,
+          refreshToken: newRefreshToken || state.refreshToken
         })),
     }),
     {

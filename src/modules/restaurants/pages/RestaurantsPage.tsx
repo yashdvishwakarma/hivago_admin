@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Plus, Store, Edit, Power, Loader2 } from 'lucide-react';
+import { Search, Plus, Store, Edit, Power, Loader2, KeyRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { restaurantService, type AdminRestaurant } from '@/core/api/restaurants';
 import { AddRestaurantModal } from './components/AddRestaurantModal';
 import { EditRestaurantModal } from './components/EditRestaurantModal';
 import { ToggleConfirmModal } from './components/ToggleConfirmModal';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useAuthStore } from '@/store/authStore';
+import { useResetPassword } from '@/hooks/useResetPassword';
+import ConfirmResetModal from '@/components/ConfirmResetModal';
+import TemporaryPasswordModal from '@/components/TemporaryPasswordModal';
 
 export default function RestaurantsPage() {
   const queryClient = useQueryClient();
@@ -13,10 +18,43 @@ export default function RestaurantsPage() {
   const [editingRestaurant, setEditingRestaurant] = useState<AdminRestaurant | null>(null);
   const [toggleConfirmData, setToggleConfirmData] = useState<{ id: string; name: string; isActive: boolean } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery.trim(), 300);
+
+  const currentUser = useAuthStore((state) => state.user);
+  const isSupport = currentUser?.role?.toLowerCase() === 'support';
+
+  const [resetRestaurant, setResetRestaurant] = useState<AdminRestaurant | null>(null);
+  const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const [tempPasswordData, setTempPasswordData] = useState<{ password: string; name: string } | null>(null);
+
+  const resetMutation = useResetPassword('restaurants');
+
+  const handleConfirmReset = () => {
+    if (!resetRestaurant) return;
+    resetMutation.mutate(resetRestaurant.id, {
+      onSuccess: (data) => {
+        setTempPasswordData({
+          password: data.temporaryPassword,
+          name: resetRestaurant.name
+        });
+        setShowConfirmReset(false);
+        setResetRestaurant(null);
+      },
+      onError: (err: any) => {
+        const isForbidden = err?.response?.status === 403 || err?.status === 403;
+        const msg = isForbidden 
+          ? "You don't have permission to reset this password." 
+          : (err?.response?.data?.message || err?.message || 'Failed to reset password.');
+        toast.error(msg);
+        setShowConfirmReset(false);
+        setResetRestaurant(null);
+      }
+    });
+  };
 
   const { data, isLoading } = useQuery({
-    queryKey: ['restaurants', searchQuery],
-    queryFn: () => restaurantService.getRestaurants({ search: searchQuery }),
+    queryKey: ['restaurants', debouncedSearchQuery],
+    queryFn: () => restaurantService.getRestaurants({ search: debouncedSearchQuery }),
   });
 
   const restaurants = data?.restaurants || [];
@@ -134,6 +172,18 @@ export default function RestaurantsPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-3">
+                        {!isSupport && (
+                          <button 
+                            className="text-gray-400 hover:text-[#d72b1f] transition-colors" 
+                            title="Reset Password"
+                            onClick={() => {
+                              setResetRestaurant(restaurant);
+                              setShowConfirmReset(true);
+                            }}
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </button>
+                        )}
                         <button 
                           className="text-gray-400 hover:text-gray-700 transition-colors" 
                           title="Edit"
@@ -187,6 +237,25 @@ export default function RestaurantsPage() {
             toggleMutation.mutate({ id: toggleConfirmData.id, activate: !toggleConfirmData.isActive });
           }
         }}
+      />
+      <ConfirmResetModal
+        isOpen={showConfirmReset}
+        onClose={() => {
+          setShowConfirmReset(false);
+          setResetRestaurant(null);
+        }}
+        onConfirm={handleConfirmReset}
+        entityName={resetRestaurant?.name || ''}
+        entityType="restaurant"
+        isPending={resetMutation.isPending}
+      />
+
+      <TemporaryPasswordModal
+        isOpen={!!tempPasswordData}
+        onClose={() => setTempPasswordData(null)}
+        temporaryPassword={tempPasswordData?.password || ''}
+        entityName={tempPasswordData?.name || ''}
+        entityType="restaurant"
       />
     </div>
   );

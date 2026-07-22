@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import {
   Search, 
-  Filter, 
   Download, 
   ShoppingBag, 
   Users, 
@@ -10,7 +10,9 @@ import {
   Eye, 
   History,
   ChevronDown,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -21,6 +23,9 @@ import { cn } from '@/utils/cn';
 import { format } from 'date-fns';
 import OrderDetailsModal, { type OrderDetailsData } from '../../dashboard/components/OrderDetailsModal';
 import RefundModal from '../../dashboard/components/RefundModal';
+import AssignRiderModal from '../../dashboard/components/AssignRiderModal';
+import { useDebounce } from '@/hooks/useDebounce';
+import { CancelOrderModal } from '@/components/ui/CancelOrderModal';
 
 const TABS = [
   { id: 'all', label: 'All Orders', icon: ShoppingBag, activeColor: 'text-[#059669]', activeBg: 'bg-[#ecfdf5]', activeBorder: 'border-[#059669]' },
@@ -35,23 +40,106 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<OrderDetailsData | null>(null);
   const [refundOrderNumber, setRefundOrderNumber] = useState<string | null>(null);
+  const [assignRiderOrder, setAssignRiderOrder] = useState<{ id?: string; orderNumber: string } | null>(null);
+  const [cancelConfirmData, setCancelConfirmData] = useState<{ orderId: string; orderNumber: string } | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
+  const detailsOrderId = selectedOrderDetails?.orderId || selectedOrderDetails?.originalOrder?.orderId || selectedOrderDetails?.originalOrder?.id || selectedOrderDetails?.id;
+
+  const queryClient = useQueryClient();
+
+  const cancelOrderMutation = useMutation({
+    mutationFn: ({ orderId, reason, notes }: { orderId: string; reason: string; notes: string }) =>
+      ordersService.cancelOrder(orderId, { reason, notes, forceCancel: true }),
+    onSuccess: () => {
+      toast.success(`Order cancelled successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['orders-raw'] });
+      setCancelConfirmData(null);
+      setSelectedOrderDetails(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to cancel order.');
+    }
+  });
+
+  const refundOrderMutation = useMutation({
+    mutationFn: (orderId: string) => ordersService.refundOrder(orderId),
+    onSuccess: () => {
+      toast.success(`Refund initiated successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['orders-raw'] });
+      setRefundOrderNumber(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to initiate refund.');
+    }
+  });
+
+  const escalateOrderMutation = useMutation({
+    mutationFn: (orderId: string) => ordersService.escalateOrder(orderId),
+    onSuccess: () => {
+      toast.success(`Order escalated successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['orders-raw'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to escalate order.');
+    }
+  });
+
+  const findOrderIdByNumber = (num: string) => {
+    const cleanNum = num.replace('#', '').trim();
+    const match = allOrders.find((o: any) => 
+      o.orderNumber.replace('#', '').trim() === cleanNum ||
+      o.orderId === cleanNum
+    );
+    return match?.orderId;
+  };
+
+  const debouncedSearchTerm = useDebounce(searchTerm.trim(), 300);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['orders', activeTab, searchTerm, statusFilter],
+    queryKey: ['orders-raw', activeTab, statusFilter, debouncedSearchTerm, page],
     queryFn: () => ordersService.getOrders({ 
       status: activeTab === 'all' ? (statusFilter === 'all' ? undefined : statusFilter) : activeTab, 
-      search: searchTerm || undefined,
-      page: 1,
-      pageSize: 20
+      search: debouncedSearchTerm && debouncedSearchTerm.length >= 3 ? undefined : (debouncedSearchTerm || undefined), // Only use API search if it's short or we want exact? No, let's stick to local for partial.
+      page: debouncedSearchTerm ? 1 : page,
+      pageSize: debouncedSearchTerm ? 500 : pageSize
     }),
   });
 
-  const orders = data?.items || [];
+  const allOrders = data?.items || [];
   const counts = data?.counts || { all: 0, active: 0, escalated: 0, failed: 0 };
+
+  const filteredOrders = useMemo(() => {
+    if (!debouncedSearchTerm) return allOrders;
+    const term = debouncedSearchTerm.toLowerCase();
+    return allOrders.filter(order => 
+      order.orderNumber.toLowerCase().includes(term) ||
+      order.customerName.toLowerCase().includes(term) ||
+      order.restaurantName.toLowerCase().includes(term)
+    );
+  }, [allOrders, debouncedSearchTerm]);
+
+  const orders = useMemo(() => {
+    // If we're searching, we paginate the local filtered list
+    if (debouncedSearchTerm) {
+      const start = (page - 1) * pageSize;
+      return filteredOrders.slice(start, start + pageSize);
+    }
+    // Otherwise, we use the API's already paginated list
+    return allOrders;
+  }, [allOrders, filteredOrders, debouncedSearchTerm, page, pageSize]);
+
+  const totalCount = debouncedSearchTerm ? filteredOrders.length : (data?.totalCount || 0);
+  
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, debouncedSearchTerm, statusFilter]);
 
   const handleExport = async () => {
     try {
-      const blob = await ordersService.exportOrders({ status: activeTab, search: searchTerm });
+      const blob = await ordersService.exportOrders({ status: activeTab, search: debouncedSearchTerm });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -59,22 +147,34 @@ export default function OrdersPage() {
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
+      toast.success("Orders exported successfully!");
     } catch (error) {
       console.error('Export failed', error);
+      toast.error("Failed to export orders.");
     }
   };
 
   const getStatusBadgeVariant = (status: string): any => {
     switch (status.toLowerCase()) {
       case 'escalated': return 'escalated';
-      case 'delivering': return 'delivering';
+      case 'delivering':
+      case 'assigned':
+      case 'picked_up':
+      case 'pickedup': return 'delivering';
       case 'preparing': return 'preparing';
-      case 'completed': return 'completed';
+      case 'completed':
+      case 'delivered': return 'completed';
       case 'failed':
-      case 'cancelled': return 'failed';
+      case 'cancelled':
+      case 'rejected': return 'failed';
       case 'readyforpickup':
       case 'ready': return 'success';
       case 'confirmed': return 'info';
+      case 'refunding':
+      case 'refunded': return 'refunding';
+      case 'pending':
+      case 'placed':
+      case 'paid': return 'warning';
       default: return 'secondary';
     }
   };
@@ -85,6 +185,18 @@ export default function OrdersPage() {
         isOpen={!!selectedOrderDetails}
         onClose={() => setSelectedOrderDetails(null)}
         order={selectedOrderDetails}
+        onAssignRider={() => setAssignRiderOrder({ id: detailsOrderId, orderNumber: selectedOrderDetails?.orderNumber || '' })}
+        onCancel={() => {
+          if (selectedOrderDetails && detailsOrderId) {
+            setCancelConfirmData({ orderId: detailsOrderId, orderNumber: selectedOrderDetails.orderNumber });
+            setSelectedOrderDetails(null);
+          }
+        }}
+        onEscalate={() => {
+          if (selectedOrderDetails && detailsOrderId) {
+            escalateOrderMutation.mutate(detailsOrderId);
+          }
+        }}
         onInitiateRefund={() => {
           if (selectedOrderDetails) {
             setRefundOrderNumber(selectedOrderDetails.orderNumber);
@@ -97,9 +209,36 @@ export default function OrdersPage() {
         isOpen={!!refundOrderNumber}
         onClose={() => setRefundOrderNumber(null)}
         orderNumber={refundOrderNumber}
-        onConfirm={(reason) => {
-          console.log(`Refund initiated for ${refundOrderNumber} with reason: ${reason}`);
+        onConfirm={() => {
+          if (refundOrderNumber) {
+            const dbId = findOrderIdByNumber(refundOrderNumber);
+            if (dbId) {
+              refundOrderMutation.mutate(dbId);
+            } else {
+              toast.error("Failed to resolve order ID for refund.");
+            }
+          }
         }}
+      />
+
+      <AssignRiderModal
+        isOpen={!!assignRiderOrder}
+        onClose={() => setAssignRiderOrder(null)}
+        orderNumber={assignRiderOrder?.orderNumber || 'OR-0000'}
+        orderId={assignRiderOrder?.id}
+      />
+
+      {/* Cancel Order Modal */}
+      <CancelOrderModal
+        isOpen={!!cancelConfirmData}
+        onClose={() => setCancelConfirmData(null)}
+        onConfirm={(reason, notes) => {
+          if (cancelConfirmData) {
+            cancelOrderMutation.mutate({ orderId: cancelConfirmData.orderId, reason, notes });
+          }
+        }}
+        orderNumber={cancelConfirmData?.orderNumber}
+        isPending={cancelOrderMutation.isPending}
       />
 
       {/* Header */}
@@ -136,11 +275,6 @@ export default function OrdersPage() {
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
-
-          <Button variant="outline" className="h-11 border-gray-200 text-gray-700 font-medium px-4">
-            <Filter className="h-4 w-4 mr-2" />
-            More Filters
-          </Button>
 
           <Button 
             variant="outline" 
@@ -183,7 +317,7 @@ export default function OrdersPage() {
         })}
       </div>
 
-      {/* Table Area */}
+      <div className="flex flex-col">
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <Table>
           <TableHeader className="bg-gray-50/50">
@@ -234,12 +368,14 @@ export default function OrdersPage() {
                             id: order.orderId,
                             orderNumber: order.orderNumber,
                             time: format(new Date(order.createdAt), 'dd/MM/yyyy, HH:mm:ss'),
-                            statusType: ['escalated', 'failed', 'cancelled'].includes(order.status.toLowerCase()) ? 'critical' : ['preparing', 'delivering'].includes(order.status.toLowerCase()) ? 'warning' : 'normal',
+                            statusType: ['escalated', 'failed', 'cancelled', 'rejected', 'refunded'].includes(order.status.toLowerCase()) ? 'critical' : ['preparing', 'delivering', 'assigned', 'picked_up', 'pickedup', 'ready', 'readyforpickup'].includes(order.status.toLowerCase()) ? 'warning' : 'normal',
                             statusTitle: order.status,
                             statusDescription: "Live tracking & updates enabled",
                             customerName: order.customerName,
                             customerPhone: "+91 88888 12345",
                             customerAddress: "Flat 204, Aundh Society, Pune, MH 411007",
+                            customerLatitude: order.latitude,
+                            customerLongitude: order.longitude,
                             restaurantName: order.restaurantName,
                             restaurantAddress: "Koregaon Park, Pune, MH 411001",
                             items: [
@@ -253,16 +389,24 @@ export default function OrdersPage() {
                             ]
                           });
                         }}
-                        className="hover:text-primary transition-colors cursor-pointer p-1"
+                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                        title="View Order Details"
                       >
                         <Eye className="h-[18px] w-[18px]" />
                       </button>
-                      <button className="hover:text-primary transition-colors cursor-pointer p-1">
+                      <button 
+                        onClick={() => setRefundOrderNumber(order.orderNumber)}
+                        className="hover:text-primary transition-colors cursor-pointer p-1"
+                        title="Initiate Refund"
+                      >
                         <History className="h-[18px] w-[18px]" />
                       </button>
                       <button 
-                        onClick={() => setRefundOrderNumber(order.orderNumber)}
+                        onClick={() => {
+                          setCancelConfirmData({ orderId: order.orderId, orderNumber: order.orderNumber });
+                        }}
                         className="hover:text-red-600 transition-colors cursor-pointer p-1"
+                        title="Cancel Order"
                       >
                         <XCircle className="h-[18px] w-[18px]" />
                       </button>
@@ -279,6 +423,84 @@ export default function OrdersPage() {
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination */}
+        {totalCount > 0 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/30">
+            <div className="text-sm text-gray-500">
+              Showing <span className="font-semibold text-gray-900">{(page - 1) * pageSize + 1}</span> to <span className="font-semibold text-gray-900">{Math.min(page * pageSize, totalCount)}</span> of <span className="font-semibold text-gray-900">{totalCount}</span> orders
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                disabled={page === 1}
+                className="h-9 w-9 p-0 flex items-center justify-center border-gray-200"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const totalPages = Math.ceil(totalCount / pageSize);
+                  const pages = [];
+                  if (totalPages <= 7) {
+                    for (let i = 1; i <= totalPages; i++) pages.push(i);
+                  } else {
+                    if (page <= 4) {
+                      for (let i = 1; i <= 5; i++) pages.push(i);
+                      pages.push('...');
+                      pages.push(totalPages);
+                    } else if (page >= totalPages - 3) {
+                      pages.push(1);
+                      pages.push('...');
+                      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+                    } else {
+                      pages.push(1);
+                      pages.push('...');
+                      pages.push(page - 1);
+                      pages.push(page);
+                      pages.push(page + 1);
+                      pages.push('...');
+                      pages.push(totalPages);
+                    }
+                  }
+                  
+                  return pages.map((p, i) => (
+                    p === '...' ? (
+                      <span key={`dots-${i}`} className="px-2 text-gray-400">...</span>
+                    ) : (
+                      <Button
+                        key={p}
+                        variant={page === p ? "primary" : "outline"}
+                        size="sm"
+                        onClick={() => setPage(p as number)}
+                        className={cn(
+                          "h-9 w-9 p-0 text-sm font-medium",
+                          page === p ? "bg-primary text-white" : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                        )}
+                      >
+                        {p}
+                      </Button>
+                    )
+                  ));
+                })()}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(prev => Math.min(Math.ceil(totalCount / pageSize), prev + 1))}
+                disabled={page >= Math.ceil(totalCount / pageSize)}
+                className="h-9 w-9 p-0 flex items-center justify-center border-gray-200"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
       </div>
     </div>
   );

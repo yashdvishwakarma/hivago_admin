@@ -15,6 +15,7 @@ const PayoutsPage = lazy(() => import('./modules/payouts/pages/PayoutsPage'));
 const AnalyticsPage = lazy(() => import('./modules/analytics/pages/AnalyticsPage'));
 const SettingsPage = lazy(() => import('./modules/settings/pages/SettingsPage'));
 const OwnersPage = lazy(() => import('./modules/owners/pages/OwnersPage'));
+const AdminMarketingPage = lazy(() => import('./modules/marketing/pages/AdminMarketingPage'));
 const LoginPage = lazy(() => import('./modules/auth/pages/LoginPage'));
 
 function Loader() {
@@ -42,7 +43,7 @@ function App() {
   return (
     <AuthInitializer>
       <Suspense fallback={<Loader />}>
-        <Toaster position="bottom-center" toastOptions={{ duration: 3000 }} />
+        <Toaster position="bottom-right" toastOptions={{ duration: 3000 }} />
         <SessionWarningModal />
       <Routes>
         {/* Public Login Route */}
@@ -68,6 +69,7 @@ function App() {
           <Route path="riders" element={<RidersPage />} />
           <Route path="payouts" element={<PayoutsPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="marketing" element={<AdminMarketingPage />} />
           <Route path="settings" element={<SettingsPage />} />
           {/* Default fallback inside layout */}
           <Route path="*" element={<Navigate to="/" replace />} />

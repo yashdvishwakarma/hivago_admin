@@ -8,7 +8,8 @@ import {
   LineChart, 
   Settings,
   Users,
-  LogOut
+  LogOut,
+  Megaphone
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuthStore } from '@/store/authStore';
@@ -21,6 +22,7 @@ const navigation = [
   { name: 'Riders', href: '/riders', icon: Bike },
   { name: 'Payouts', href: '/payouts', icon: Wallet },
   { name: 'Money Analytics', href: '/analytics', icon: LineChart },
+  { name: 'Marketing', href: '/marketing', icon: Megaphone },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

@@ -15,58 +15,82 @@ import { cn } from '@/utils/cn';
 
 export interface AlertData {
   id: string;
-  type: 'escalated' | 'failed' | 'stuck' | 'awaiting';
+  type: 'escalated' | 'failed' | 'stuck' | 'awaiting' | string;
   title: string;
   message: string;
   orderNumber: string;
+  customerName?: string;
+  restaurantName?: string;
+  riderName?: string;
+  customerPhone?: string;
+  restaurantPhone?: string;
+  time?: string;
+  actionText?: string;
 }
 
 interface AlertResolutionModalProps {
   isOpen: boolean;
   onClose: () => void;
   alert: AlertData | null;
+  onAction?: (action: string, data?: any) => void;
   onAssignRider?: () => void;
 }
 
-export default function AlertResolutionModal({ isOpen, onClose, alert, onAssignRider }: AlertResolutionModalProps) {
+export default function AlertResolutionModal({ 
+  isOpen, 
+  onClose, 
+  alert, 
+  onAction,
+  onAssignRider 
+}: AlertResolutionModalProps) {
   if (!isOpen || !alert) return null;
 
   // Configuration for different alert types based on designs
   const getConfig = () => {
+    const orderDisplayNumber = alert.orderNumber.startsWith('#') ? alert.orderNumber : `#${alert.orderNumber}`;
+    
     switch (alert.type) {
-      case 'escalated':
+      case 'escalated': {
+        const isRestaurantUnconfirmed = 
+          alert.message?.toLowerCase().includes('not confirmed') || 
+          alert.message?.toLowerCase().includes('unconfirmed') ||
+          alert.message?.toLowerCase().includes('awaiting confirmation') ||
+          alert.title?.toLowerCase().includes('confirm') ||
+          alert.title?.toLowerCase().includes('awaiting');
+
         return {
           icon: AlertTriangle,
           headerColor: 'text-[#d72b1f]',
           badgeText: null,
-          title: `Order Escalated – Delayed by 18 minutes`,
-          subtitle: `Order ${alert.orderNumber.replace('#', '')}`,
+          title: alert.title || `Order Escalated – Delayed`,
+          subtitle: `Order ${orderDisplayNumber.replace('#', '')}`,
           recommendation: {
-            icon: Bike,
+            icon: isRestaurantUnconfirmed ? Clock : Bike,
             title: 'Smart Recommendation',
-            message: 'Order delayed by 18 mins.',
+            message: alert.message,
             actionPrefix: 'Suggested action:',
-            actionText: 'Assign New Rider',
-            actionSuffix: 'to ensure timely delivery.'
+            actionText: isRestaurantUnconfirmed ? 'Contact Restaurant' : 'Assign New Rider',
+            actionSuffix: isRestaurantUnconfirmed ? 'to confirm the order.' : 'to ensure timely delivery.'
           },
           context: {
             leftLabel: 'Current Rider',
-            leftValue: 'Rohit M.',
+            leftValue: alert.riderName || 'Not Assigned',
+            leftPhone: null,
             rightLabel: 'Restaurant',
-            rightValue: 'Pizza Paradise'
+            rightValue: alert.restaurantName || 'Unknown',
+            rightPhone: alert.restaurantPhone
           },
           urgentAction: {
-            label: 'Assign New Rider',
-            icon: UserPlus,
+            label: isRestaurantUnconfirmed ? 'Contact Restaurant' : 'Assign New Rider',
+            icon: isRestaurantUnconfirmed ? Phone : UserPlus,
             color: 'bg-[#059669] hover:bg-[#047857] text-white',
             badge: 'Recommended'
           },
-          investigateButtons: [
-            { label: 'Contact Rider', icon: Phone, color: 'text-blue-600 border-blue-200 hover:bg-blue-50' },
-            { label: 'Contact Restaurant', icon: Store, color: 'text-[#059669] border-[#059669] hover:bg-[#ecfdf5]' },
-            { label: 'Escalate Issue', icon: AlertCircle, color: 'text-[#d72b1f] border-red-200 hover:bg-red-50' }
+          investigateButtons: isRestaurantUnconfirmed ? [] : [
+            { label: 'Contact Restaurant', icon: Store, color: 'text-[#059669] border-[#059669] hover:bg-[#ecfdf5]', action: 'contact_restaurant' }
           ]
         };
+      }
 
       case 'failed':
         return {
@@ -74,20 +98,22 @@ export default function AlertResolutionModal({ isOpen, onClose, alert, onAssignR
           headerColor: 'text-[#d72b1f]',
           badgeText: null,
           title: 'Dispatch Failed',
-          subtitle: `Order ${alert.orderNumber.replace('#', '')}`,
+          subtitle: `Order ${orderDisplayNumber.replace('#', '')}`,
           recommendation: {
             icon: Bike,
             title: 'Critical Issue – No riders available for dispatch',
-            message: null,
+            message: alert.message,
             actionPrefix: 'Suggested action:',
             actionText: 'Manually assign rider',
             actionSuffix: 'or retry dispatch.'
           },
           context: {
-            leftLabel: 'Current Rider',
-            leftValue: 'Rohit M.',
+            leftLabel: 'Last Rider',
+            leftValue: alert.riderName || 'None',
+            leftPhone: null,
             rightLabel: 'Restaurant',
-            rightValue: 'Pizza Paradise'
+            rightValue: alert.restaurantName || 'Unknown',
+            rightPhone: alert.restaurantPhone
           },
           urgentAction: {
             label: 'Assign New Rider',
@@ -96,13 +122,13 @@ export default function AlertResolutionModal({ isOpen, onClose, alert, onAssignR
             badge: 'Recommended'
           },
           investigateButtons: [
-            { label: 'Retry Dispatch', icon: RefreshCw, color: 'text-blue-600 border-blue-200 hover:bg-blue-50' },
-            { label: 'Contact Support / Ops', icon: Headphones, color: 'text-[#059669] border-[#059669] hover:bg-[#ecfdf5]' }
+            { label: 'Retry Dispatch', icon: RefreshCw, color: 'text-blue-600 border-blue-200 hover:bg-blue-50', action: 'retry_dispatch' },
+            { label: 'Contact Support / Ops', icon: Headphones, color: 'text-[#059669] border-[#059669] hover:bg-[#ecfdf5]', action: 'contact_support' }
           ],
           moreActionsGrid: [
-            { label: 'Cancel Order' },
-            { label: 'Initiate Refund', icon: RefreshCw },
-            { label: 'Add Notes' }
+            { label: 'Cancel Order', action: 'cancel_order' },
+            { label: 'Initiate Refund', icon: RefreshCw, action: 'refund' },
+            { label: 'Add Notes', action: 'add_notes' }
           ]
         };
 
@@ -112,21 +138,23 @@ export default function AlertResolutionModal({ isOpen, onClose, alert, onAssignR
           headerColor: 'text-[#ea580c]',
           badgeText: 'WARNING',
           badgeColor: 'bg-orange-100 text-orange-700',
-          title: 'Warning - No rider assigned for 12 minutes',
-          subtitle: `Order ${alert.orderNumber.replace('#', '')} • Time sensitive`,
+          title: alert.title || 'Warning - Stuck in Dispatch',
+          subtitle: `Order ${orderDisplayNumber.replace('#', '')} • Time sensitive`,
           recommendation: {
             icon: Clock,
             title: 'Recommended Action',
-            message: null,
+            message: alert.message,
             actionPrefix: 'Suggested action:',
             actionText: 'Assign rider before delay increases',
             actionSuffix: ''
           },
           context: {
             leftLabel: 'Customer',
-            leftValue: 'Anjali Patil',
+            leftValue: alert.customerName || 'Unknown',
+            leftPhone: alert.customerPhone,
             rightLabel: 'Restaurant',
-            rightValue: 'Sushi Express'
+            rightValue: alert.restaurantName || 'Unknown',
+            rightPhone: alert.restaurantPhone
           },
           urgentAction: {
             label: 'Assign Rider',
@@ -135,8 +163,8 @@ export default function AlertResolutionModal({ isOpen, onClose, alert, onAssignR
             badge: 'Recommended'
           },
           investigateButtons: [
-            { label: 'Retry Dispatch', icon: RefreshCw, color: 'text-blue-600 border-blue-200 hover:bg-blue-50' },
-            { label: 'Contact Rider Pool', icon: Headphones, color: 'text-orange-500 border-orange-200 hover:bg-orange-50' }
+            { label: 'Retry Dispatch', icon: RefreshCw, color: 'text-blue-600 border-blue-200 hover:bg-blue-50', action: 'retry_dispatch' },
+            { label: 'Contact Rider Pool', icon: Headphones, color: 'text-orange-500 border-orange-200 hover:bg-orange-50', action: 'contact_riders' }
           ],
           investigateLabel: 'ALTERNATIVE SOLUTIONS'
         };
@@ -148,55 +176,58 @@ export default function AlertResolutionModal({ isOpen, onClose, alert, onAssignR
           badgeText: 'WARNING',
           badgeColor: 'bg-orange-100 text-orange-700',
           title: 'Awaiting Restaurant Confirmation',
-          subtitle: `Order ${alert.orderNumber.replace('#', '')} • Time sensitive`,
+          subtitle: `Order ${orderDisplayNumber.replace('#', '')} • Time sensitive`,
           recommendation: {
             icon: Clock,
             title: null,
-            message: 'Order placed but not yet accepted by the restaurant.',
+            message: alert.message || 'Order placed but not yet accepted by the restaurant.',
             actionPrefix: 'Suggested action:',
             actionText: 'Contact restaurant or wait before auto-cancel.',
             actionSuffix: ''
           },
           context: {
             leftLabel: 'Customer',
-            leftValue: 'Anjali Patil',
+            leftValue: alert.customerName || 'Unknown',
+            leftPhone: alert.customerPhone,
             rightLabel: 'Restaurant',
-            rightValue: 'Sushi Express'
+            rightValue: alert.restaurantName || 'Unknown',
+            rightPhone: alert.restaurantPhone
           },
           urgentAction: {
             label: 'Contact Restaurant',
-            icon: UserPlus, // Will use UserPlus as placeholder for Contact icon
+            icon: Phone,
             color: 'bg-[#059669] hover:bg-[#047857] text-white',
             badge: 'Recommended'
           },
-          investigateButtons: [] // None in this design
+          investigateButtons: []
         };
 
       default:
-        // Fallback layout similar to escalated
         return {
           icon: AlertTriangle,
           headerColor: 'text-gray-900',
           badgeText: null,
           title: alert.title,
-          subtitle: `Order ${alert.orderNumber.replace('#', '')}`,
+          subtitle: `Order ${orderDisplayNumber.replace('#', '')}`,
           recommendation: {
             icon: AlertCircle,
             title: 'Action Required',
             message: alert.message,
             actionPrefix: '',
-            actionText: 'Review order details',
+            actionText: alert.actionText || 'Review order details',
             actionSuffix: ''
           },
           context: {
             leftLabel: 'Customer',
-            leftValue: 'Unknown',
+            leftValue: alert.customerName || 'Unknown',
+            leftPhone: alert.customerPhone,
             rightLabel: 'Restaurant',
-            rightValue: 'Unknown'
+            rightValue: alert.restaurantName || 'Unknown',
+            rightPhone: alert.restaurantPhone
           },
           urgentAction: {
-            label: 'Take Action',
-            icon: UserPlus,
+            label: alert.actionText || 'Take Action',
+            icon: alert.actionText?.toLowerCase().includes('assign') ? UserPlus : AlertCircle,
             color: 'bg-[#059669] hover:bg-[#047857] text-white',
             badge: 'Recommended'
           },
@@ -244,7 +275,7 @@ export default function AlertResolutionModal({ isOpen, onClose, alert, onAssignR
         <div className="p-5 overflow-y-auto custom-scrollbar">
           
           {/* Recommendation Box */}
-          <div className="bg-[#eff6ff] border border-blue-100 rounded-xl p-4 flex gap-3 mb-5">
+          <div className="bg-[#eff6ff] border border-blue-100 rounded-xl p-4 flex items-start gap-3 mb-5">
             <div className="mt-0.5 text-blue-500 bg-white p-1 rounded-full shadow-sm">
               {React.createElement(config.recommendation.icon, { className: "w-4 h-4" })}
             </div>
@@ -271,11 +302,37 @@ export default function AlertResolutionModal({ isOpen, onClose, alert, onAssignR
           <div className="border border-gray-200 rounded-xl p-4 flex justify-between mb-6 bg-gray-50/50">
             <div>
               <p className="text-[12px] text-gray-500 mb-1">{config.context.leftLabel}</p>
-              <p className="text-[14px] font-bold text-gray-900">{config.context.leftValue}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-[14px] font-bold text-gray-900">{config.context.leftValue}</p>
+                {config.context.leftPhone && (
+                  <button 
+                    onClick={() => onAction?.('call', config.context.leftPhone)}
+                    className="p-1 rounded-full hover:bg-gray-200 text-blue-600 transition-colors"
+                  >
+                    <Phone className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              {config.context.leftPhone && (
+                <p className="text-[12px] text-gray-500 mt-0.5">{config.context.leftPhone}</p>
+              )}
             </div>
             <div className="text-right">
               <p className="text-[12px] text-gray-500 mb-1">{config.context.rightLabel}</p>
-              <p className="text-[14px] font-bold text-gray-900">{config.context.rightValue}</p>
+              <div className="flex items-center justify-end gap-2">
+                {config.context.rightPhone && (
+                  <button 
+                    onClick={() => onAction?.('call', config.context.rightPhone)}
+                    className="p-1 rounded-full hover:bg-gray-200 text-green-600 transition-colors"
+                  >
+                    <Phone className="w-3 h-3" />
+                  </button>
+                )}
+                <p className="text-[14px] font-bold text-gray-900">{config.context.rightValue}</p>
+              </div>
+              {config.context.rightPhone && (
+                <p className="text-[12px] text-gray-500 mt-0.5">{config.context.rightPhone}</p>
+              )}
             </div>
           </div>
 
@@ -289,12 +346,14 @@ export default function AlertResolutionModal({ isOpen, onClose, alert, onAssignR
                 </span>
               )}
             </div>
-            <button 
+             <button 
               onClick={() => {
                 if (config.urgentAction.label.includes('Assign') && onAssignRider) {
                   onAssignRider();
-                } else {
-                  // Handle other urgent actions
+                } else if (config.urgentAction.label.includes('Contact Restaurant') && onAction) {
+                  onAction('contact_restaurant', { phone: alert.restaurantPhone });
+                } else if (onAction) {
+                  onAction('urgent', { label: config.urgentAction.label });
                 }
               }}
               className={cn(
@@ -316,6 +375,7 @@ export default function AlertResolutionModal({ isOpen, onClose, alert, onAssignR
                 {config.investigateButtons.map((btn, idx) => (
                   <button 
                     key={idx}
+                    onClick={() => onAction?.(btn.action, btn)}
                     className={cn(
                       "flex-1 py-2.5 rounded-xl font-semibold text-[13px] flex items-center justify-center gap-2 border bg-white transition-colors shadow-sm",
                       btn.color
@@ -329,36 +389,24 @@ export default function AlertResolutionModal({ isOpen, onClose, alert, onAssignR
             </div>
           )}
 
-          {/* More Actions Grid (only for failed type based on design) */}
-          {config.moreActionsGrid && (
+          {/* Alternative Actions */}
+          {(config as any).moreActionsGrid && (config as any).moreActionsGrid.length > 0 && (
             <div className="mb-6">
               <h3 className="text-[11px] font-bold text-gray-400 tracking-wider uppercase mb-3">
-                More Actions
+                Alternative Actions
               </h3>
-              <div className="flex gap-3">
-                {config.moreActionsGrid.map((btn, idx) => (
-                  <button 
+              <div className="grid grid-cols-2 gap-3">
+                {(config as any).moreActionsGrid.map((btn: any, idx: number) => (
+                  <button
                     key={idx}
-                    className="flex-1 py-2.5 rounded-xl font-medium text-[13px] text-gray-600 flex items-center justify-center gap-2 border border-gray-200 border-dashed hover:bg-gray-50 transition-colors"
+                    onClick={() => onAction?.(btn.action, btn)}
+                    className="py-2 px-3 rounded-lg font-medium text-[12px] border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                   >
-                    {btn.icon && React.createElement(btn.icon, { className: "w-4 h-4" })}
+                    {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
                     {btn.label}
                   </button>
                 ))}
               </div>
-            </div>
-          )}
-          
-          {/* Default More Actions (for others) */}
-          {!config.moreActionsGrid && (
-            <div className="mb-6">
-              <h3 className="text-[11px] font-bold text-gray-400 tracking-wider uppercase mb-3">
-                More Actions
-              </h3>
-              <button className="w-full py-3 rounded-xl font-medium text-[13px] text-gray-500 border border-gray-200 border-dashed hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-                <span className="font-bold tracking-widest leading-none mb-1">...</span>
-                Additional Options
-              </button>
             </div>
           )}
 

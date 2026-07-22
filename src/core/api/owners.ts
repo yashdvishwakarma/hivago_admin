@@ -10,6 +10,9 @@ export interface AdminOwner {
   isActive: boolean;
   outletCount: number;
   createdAt: string;
+  bankAccountNumber?: string;
+  bankIfscCode?: string;
+  bankAccountName?: string;
 }
 
 export interface OwnersResponse {
@@ -40,5 +43,13 @@ export const ownerService = {
   createOwner: async (payload: CreateOwnerPayload): Promise<any> => {
     const response = await apiClient.post('/admin/owners', payload);
     return response;
-  }
+  },
+
+  updateBankDetails: async (
+    ownerId: string,
+    payload: { bankAccountNumber: string; bankIfscCode: string; bankAccountName: string }
+  ): Promise<any> => {
+    const response = await apiClient.put(`/admin/owners/${ownerId}/bank`, payload);
+    return response;
+  },
 };

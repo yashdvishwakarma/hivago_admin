@@ -16,6 +16,8 @@ export interface Order {
   total: number;
   currency: string;
   createdAt: string; // ISO string
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface OrderStats {
@@ -64,5 +66,32 @@ export const ordersService = {
   getOrderStats: async (): Promise<OrderStats> => {
     const response = await apiClient.get('/admins/stats/orders');
     return response as unknown as OrderStats;
+  },
+
+  assignRider: async (orderId: string, riderId: string): Promise<any> => {
+    const response = await apiClient.post(`/admin/orders/${orderId}/assign-rider`, { riderId });
+    return response;
+  },
+
+  cancelOrder: async (orderId: string, payload: { reason: string; notes?: string; forceCancel?: boolean }): Promise<any> => {
+    const response = await apiClient.post(`/admin/orders/${orderId}/cancel`, {
+      reason: payload.reason,
+      notes: payload.notes || '',
+      forceCancel: payload.forceCancel ?? true,
+    });
+    return response;
+  },
+
+  refundOrder: async (orderId: string, payload?: { amount?: number }): Promise<any> => {
+    const response = await apiClient.post(`/admin/orders/${orderId}/refund`, {
+      amount: payload?.amount ?? null,
+      forceRefund: true,
+    });
+    return response;
+  },
+
+  escalateOrder: async (orderId: string, reason?: string): Promise<any> => {
+    const response = await apiClient.post(`/admin/orders/${orderId}/escalate`, { reason: reason || '' });
+    return response;
   },
 };

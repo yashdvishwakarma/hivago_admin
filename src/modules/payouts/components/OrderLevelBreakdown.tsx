@@ -36,7 +36,7 @@ export default function OrderLevelBreakdown({ restaurantId, restaurantName, onBa
 
     // Filter orders for this restaurant
     const restaurantOrders = ordersResponse.items.filter(
-      (o: any) => o.restaurantName === restaurantName && !['Failed', 'escalated'].includes(o.status)
+      (o: any) => o.restaurantName === restaurantName && !['failed', 'escalated'].includes((o.status || '').toLowerCase())
     );
 
     // Sort by createdAt descending
@@ -46,7 +46,7 @@ export default function OrderLevelBreakdown({ restaurantId, restaurantName, onBa
 
     return sortedOrders.map((order: any, idx: number) => {
       const orderValue = order.total || 0;
-      const isCancelled = order.status === 'Cancelled';
+      const isCancelled = (order.status || '').toLowerCase() === 'cancelled';
       
       const deliveryFee = 40; 
       // Hardcode Rider Cost matching the visual pattern roughly for display

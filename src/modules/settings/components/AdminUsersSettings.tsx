@@ -1,49 +1,21 @@
 import { useState } from 'react';
-import { UserPlus, User } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { UserPlus, User, Loader2 } from 'lucide-react';
 import { AddAdminModal } from './AddAdminModal';
-
-interface AdminUser {
-  id: string;
-  initials: string;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
-}
+import { adminUserService } from '@/core/api/adminUsers';
 
 export function AdminUsersSettings() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
-  // Mock data matching the design
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([
-    {
-      id: '1',
-      initials: 'AU',
-      name: 'Admin User',
-      email: 'admin@hivago.com',
-      role: 'Super Admin',
-      status: 'Active',
-    },
-    {
-      id: '2',
-      initials: 'SS',
-      name: 'Support Staff',
-      email: 'support@hivago.com',
-      role: 'Support',
-      status: 'Active',
-    },
-    {
-      id: '3',
-      initials: 'OM',
-      name: 'Operations Manager',
-      email: 'ops@hivago.com',
-      role: 'Operator',
-      status: 'Active',
-    },
-  ]);
+  const { data, isLoading } = useQuery({
+    queryKey: ['adminUsers'],
+    queryFn: () => adminUserService.getAdminUsers({ pageSize: 100 }),
+  });
 
-  const handleAddAdmin = (newAdmin: AdminUser) => {
-    setAdminUsers([...adminUsers, newAdmin]);
+  const adminUsers = data?.admins || [];
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
   return (
@@ -64,34 +36,44 @@ export function AdminUsersSettings() {
 
       {/* Admin Users List */}
       <div className="flex flex-col gap-4">
-        {adminUsers.map((admin) => (
-          <div key={admin.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center text-[14px] font-bold">
-                {admin.initials}
-              </div>
-              <div>
-                <h3 className="text-[14px] font-bold text-gray-900">{admin.name}</h3>
-                <p className="text-[12px] text-gray-500 mt-0.5">{admin.email}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-8">
-              <div className="text-right">
-                <p className="text-[13px] font-bold text-gray-900">{admin.role}</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">{admin.status}</p>
-              </div>
-              <button className="text-gray-400 hover:text-gray-900 transition-colors">
-                <User className="w-5 h-5" />
-              </button>
-            </div>
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <Loader2 className="w-8 h-8 animate-spin mb-2" />
+            <p className="text-sm">Loading admin users...</p>
           </div>
-        ))}
+        ) : adminUsers.length === 0 ? (
+          <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+            <p className="text-sm text-gray-500">No admin users found.</p>
+          </div>
+        ) : (
+          adminUsers.map((admin: any) => (
+            <div key={admin.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center text-[14px] font-bold">
+                  {getInitials(admin.name)}
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-bold text-gray-900">{admin.name}</h3>
+                  <p className="text-[12px] text-gray-500 mt-0.5">{admin.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-8">
+                <div className="text-right">
+                  <p className="text-[13px] font-bold text-gray-900">{admin.role}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">{admin.isActive ? 'Active' : 'Inactive'}</p>
+                </div>
+                <button className="text-gray-400 hover:text-gray-900 transition-colors">
+                  <User className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       <AddAdminModal 
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)}
-        onSuccess={handleAddAdmin}
       />
     </div>
   );
