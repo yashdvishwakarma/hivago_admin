@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/Button';
 import { payoutService, type PayoutStatus } from '@/core/api/payouts';
 import OrderLevelBreakdown from '../components/OrderLevelBreakdown';
 import toast from 'react-hot-toast';
-import { CustomPromptModal } from '@/components/ui/CustomPopups';
+import { CustomPromptModal, CustomConfirmModal } from '@/components/ui/CustomPopups';
 
 export default function PayoutsPage() {
   const [primaryTab, setPrimaryTab] = useState<'restaurant' | 'rider'>('restaurant');
@@ -35,6 +35,13 @@ export default function PayoutsPage() {
     rect: DOMRect | null;
   }>({ isOpen: false, rowId: null, rect: null });
   const [holdModalData, setHoldModalData] = useState<{ payoutId: string; isRider: boolean } | null>(null);
+  const [confirmModalData, setConfirmModalData] = useState<{
+    type: 'pay-now' | 'release-hold' | 'retry';
+    payoutId: string;
+    isRider: boolean;
+    displayName: string;
+    amount: number;
+  } | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -171,13 +178,13 @@ export default function PayoutsPage() {
       if (!riderSummary) return [];
       const nextRiderDate = new Date(riderSummary.nextAutoRunAtUtc);
       const lastAutoRunVal = riderSummary.lastAutoRun 
-        ? `${new Date(riderSummary.lastAutoRun.atUtc).toLocaleString()} • ₹${riderSummary.lastAutoRun.totalPaid.toLocaleString()}`
+        ? `${new Date(riderSummary.lastAutoRun.atUtc).toLocaleString()} • ₹${(riderSummary.lastAutoRun.totalPaid ?? 0).toLocaleString()}`
         : '—';
       return [
-        { label: 'Total Riders Pending', value: riderSummary.pendingCount.toString(), type: 'neutral', icon: <Clock className="w-4 h-4 text-[#ea580c]" /> },
+        { label: 'Total Riders Pending', value: (riderSummary.pendingCount ?? 0).toString(), type: 'neutral', icon: <Clock className="w-4 h-4 text-[#ea580c]" /> },
         { label: 'Total Earnings', value: `₹${(riderSummary.totalEarnings ?? 0).toLocaleString()}`, type: 'neutral', icon: <DollarSign className="w-4 h-4 text-[#059669]" /> },
         { label: 'Subsidy Impact', value: `₹${(riderSummary.subsidyImpact ?? 0).toLocaleString()}`, type: 'danger', icon: <TrendingDown className="w-4 h-4 text-[#d72b1f]" /> },
-        { label: 'On Hold', value: riderSummary.onHoldCount.toString(), type: 'neutral', icon: <Pause className="w-4 h-4" /> },
+        { label: 'On Hold', value: (riderSummary.onHoldCount ?? 0).toString(), type: 'neutral', icon: <Pause className="w-4 h-4" /> },
         { 
           label: 'Next Auto-run', 
           value: nextRiderDate.toLocaleString('default', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }), 
@@ -193,11 +200,11 @@ export default function PayoutsPage() {
     const nextDate = new Date(summary.nextAutoRunAtUtc);
 
     return [
-      { label: 'Pending Payouts', value: summary.pendingCount.toString(), type: 'neutral', icon: null },
-      { label: 'Total Pending', value: `₹${summary.totalPendingAmount.toLocaleString()}`, type: 'info', icon: '₹' },
-      { label: 'Failed Amount', value: `₹${summary.failedAmount.toLocaleString()}`, type: 'danger', icon: '!' },
-      { label: 'On Hold', value: summary.onHoldCount.toString(), type: 'neutral', icon: <Pause className="w-4 h-4" /> },
-      { label: 'Platform Profit', value: `₹${summary.platformProfit.toLocaleString()}`, type: 'success', icon: '↗' },
+      { label: 'Pending Payouts', value: (summary.pendingCount ?? 0).toString(), type: 'neutral', icon: null },
+      { label: 'Total Pending', value: `₹${(summary.totalPendingAmount ?? 0).toLocaleString()}`, type: 'info', icon: '₹' },
+      { label: 'Failed Amount', value: `₹${(summary.failedAmount ?? 0).toLocaleString()}`, type: 'danger', icon: '!' },
+      { label: 'On Hold', value: (summary.onHoldCount ?? 0).toString(), type: 'neutral', icon: <Pause className="w-4 h-4" /> },
+      { label: 'Platform Profit', value: `₹${(summary.platformProfit ?? 0).toLocaleString()}`, type: 'success', icon: '↗' },
       { 
         label: 'Next Auto-run', 
         value: nextDate.toLocaleString('default', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }), 
@@ -431,8 +438,8 @@ export default function PayoutsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="py-4 px-6 text-[14px] text-gray-700">{row.orderCount}</TableCell>
-                    <TableCell className="py-4 px-6 text-[14px] font-bold text-gray-900">₹{row.gmv.toLocaleString()}</TableCell>
-                    <TableCell className="py-4 px-6 text-[15px] font-bold text-[#059669]">₹{row.netPayable.toLocaleString()}</TableCell>
+                    <TableCell className="py-4 px-6 text-[14px] font-bold text-gray-900">₹{(row.gmv ?? 0).toLocaleString()}</TableCell>
+                    <TableCell className="py-4 px-6 text-[15px] font-bold text-[#059669]">₹{(row.netPayable ?? 0).toLocaleString()}</TableCell>
                     <TableCell className="py-4 px-6">
                       <div className="flex flex-col items-start gap-1">
                         <span className={cn(
@@ -478,7 +485,7 @@ export default function PayoutsPage() {
                         <div className="p-6 pt-4 animate-in fade-in duration-200 text-center">
                           <p className="text-gray-500 text-sm italic">Batch ID: {row.payoutId} • Created: {new Date(row.createdAtUtc).toLocaleString()}</p>
                           <Button 
-                            className="mt-3 text-xs h-8 bg-gray-900"
+                            className="mt-3 text-xs h-8 bg-gray-900 text-white"
                             onClick={() => setSelectedRestaurantForDetails({ id: row.ownerId, name: row.displayName })}
                           >
                             View Order Level Breakdown
@@ -515,9 +522,9 @@ export default function PayoutsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="py-4 px-6 text-[14px] text-gray-700">{row.deliveryCount}</TableCell>
-                    <TableCell className="py-4 px-6 text-[14px] font-bold text-gray-900">₹{row.earnings.toLocaleString()}</TableCell>
-                    <TableCell className="py-4 px-6 text-[14px] font-bold text-gray-900">₹{row.incentives.toLocaleString()}</TableCell>
-                    <TableCell className="py-4 px-6 text-[15px] font-bold text-[#059669]">₹{row.finalPayout.toLocaleString()}</TableCell>
+                    <TableCell className="py-4 px-6 text-[14px] font-bold text-gray-900">₹{(row.earnings ?? 0).toLocaleString()}</TableCell>
+                    <TableCell className="py-4 px-6 text-[14px] font-bold text-gray-900">₹{(row.incentives ?? 0).toLocaleString()}</TableCell>
+                    <TableCell className="py-4 px-6 text-[15px] font-bold text-[#059669]">₹{(row.finalPayout ?? 0).toLocaleString()}</TableCell>
                     <TableCell className="py-4 px-6">
                       <div className="flex flex-col items-start gap-1">
                         <span className={cn(
@@ -603,17 +610,19 @@ export default function PayoutsPage() {
 
               return (
                 <>
-                  {(row.status === 'Pending' || row.status === 'OnHold') && (
+                  {(row.status === 'Pending' || row.status === 'Failed') && (
                     <button 
                       onClick={() => {
-                        if (isRider) {
-                          payRiderNowMutation.mutate(row.payoutId);
-                        } else {
-                          payNowMutation.mutate(row.payoutId);
-                        }
+                        setConfirmModalData({
+                          type: 'pay-now',
+                          payoutId: row.payoutId,
+                          isRider,
+                          displayName: row.displayName,
+                          amount: isRider ? row.finalPayout : row.netPayable
+                        });
                         setDropdownState({ isOpen: false, rowId: null, rect: null });
                       }}
-                      className="px-4 py-2.5 text-[13px] font-bold text-[#059669] hover:bg-green-50 text-left transition-colors flex items-center gap-2"
+                      className="px-4 py-2.5 text-[13px] font-bold text-[#059669] hover:bg-green-50 text-left transition-colors flex items-center gap-2 w-full cursor-pointer"
                     >
                       <Send className="w-3.5 h-3.5" />
                       Pay Now
@@ -626,7 +635,7 @@ export default function PayoutsPage() {
                         setHoldModalData({ payoutId: row.payoutId, isRider });
                         setDropdownState({ isOpen: false, rowId: null, rect: null });
                       }}
-                      className="px-4 py-2.5 text-[13px] font-medium text-amber-700 hover:bg-amber-50 text-left transition-colors flex items-center gap-2"
+                      className="px-4 py-2.5 text-[13px] font-medium text-amber-700 hover:bg-amber-50 text-left transition-colors flex items-center gap-2 w-full cursor-pointer"
                     >
                       <Pause className="w-3.5 h-3.5" />
                       Hold Payout
@@ -636,14 +645,16 @@ export default function PayoutsPage() {
                   {row.status === 'OnHold' && (
                     <button 
                       onClick={() => {
-                        if (isRider) {
-                          releaseRiderHoldMutation.mutate(row.payoutId);
-                        } else {
-                          releaseHoldMutation.mutate(row.payoutId);
-                        }
+                        setConfirmModalData({
+                          type: 'release-hold',
+                          payoutId: row.payoutId,
+                          isRider,
+                          displayName: row.displayName,
+                          amount: isRider ? row.finalPayout : row.netPayable
+                        });
                         setDropdownState({ isOpen: false, rowId: null, rect: null });
                       }}
-                      className="px-4 py-2.5 text-[13px] font-medium text-blue-700 hover:bg-blue-50 text-left transition-colors flex items-center gap-2"
+                      className="px-4 py-2.5 text-[13px] font-medium text-blue-700 hover:bg-blue-50 text-left transition-colors flex items-center gap-2 w-full cursor-pointer"
                     >
                       <Send className="w-3.5 h-3.5" />
                       Release Hold
@@ -653,14 +664,16 @@ export default function PayoutsPage() {
                   {row.status === 'Failed' && (
                     <button 
                       onClick={() => {
-                        if (isRider) {
-                          retryRiderMutation.mutate(row.payoutId);
-                        } else {
-                          retryMutation.mutate(row.payoutId);
-                        }
+                        setConfirmModalData({
+                          type: 'retry',
+                          payoutId: row.payoutId,
+                          isRider,
+                          displayName: row.displayName,
+                          amount: isRider ? row.finalPayout : row.netPayable
+                        });
                         setDropdownState({ isOpen: false, rowId: null, rect: null });
                       }}
-                      className="px-4 py-2.5 text-[13px] font-medium text-gray-700 hover:bg-gray-50 text-left transition-colors flex items-center gap-2"
+                      className="px-4 py-2.5 text-[13px] font-medium text-gray-700 hover:bg-gray-50 text-left transition-colors flex items-center gap-2 w-full cursor-pointer"
                     >
                       <Clock className="w-3.5 h-3.5" />
                       Retry Payout
@@ -675,7 +688,7 @@ export default function PayoutsPage() {
                           setSelectedRestaurantForDetails({ id: row.ownerId, name: row.displayName });
                           setDropdownState({ isOpen: false, rowId: null, rect: null });
                         }}
-                        className="px-4 py-2.5 text-[13px] font-medium text-gray-700 hover:bg-gray-50 text-left transition-colors"
+                        className="px-4 py-2.5 text-[13px] font-medium text-gray-700 hover:bg-gray-50 text-left transition-colors w-full cursor-pointer"
                       >
                         View Breakdown
                       </button>
@@ -706,6 +719,60 @@ export default function PayoutsPage() {
         message="Provide a reason for placing this payout on hold. This will be recorded and visible in the audit trail."
         placeholder="e.g. Pending KYC verification..."
         confirmText="Place on Hold"
+      />
+
+      {/* Global Confirm Modal */}
+      <CustomConfirmModal
+        isOpen={!!confirmModalData}
+        onClose={() => setConfirmModalData(null)}
+        onConfirm={() => {
+          if (!confirmModalData) return;
+          const { type, payoutId, isRider } = confirmModalData;
+          if (type === 'pay-now') {
+            if (isRider) {
+              payRiderNowMutation.mutate(payoutId);
+            } else {
+              payNowMutation.mutate(payoutId);
+            }
+          } else if (type === 'release-hold') {
+            if (isRider) {
+              releaseRiderHoldMutation.mutate(payoutId);
+            } else {
+              releaseHoldMutation.mutate(payoutId);
+            }
+          } else if (type === 'retry') {
+            if (isRider) {
+              retryRiderMutation.mutate(payoutId);
+            } else {
+              retryMutation.mutate(payoutId);
+            }
+          }
+        }}
+        title={
+          confirmModalData
+            ? confirmModalData.type === 'pay-now' ? 'Trigger Payout' :
+              confirmModalData.type === 'release-hold' ? 'Release Hold' :
+              'Retry Payout'
+            : ''
+        }
+        message={
+          confirmModalData
+            ? confirmModalData.type === 'pay-now'
+              ? `Are you sure you want to trigger immediate payout of ₹${confirmModalData.amount.toLocaleString()} to ${confirmModalData.displayName} via gateway? This action cannot be undone.`
+              : confirmModalData.type === 'release-hold'
+              ? `Are you sure you want to release the hold on this payout for ${confirmModalData.displayName}? It will return to Pending and be processed in the next run.`
+              : `Are you sure you want to re-queue this failed payout for ${confirmModalData.displayName} for the next auto-run?`
+            : ''
+        }
+        confirmText={
+          confirmModalData
+            ? confirmModalData.type === 'pay-now' ? 'Pay Now' :
+              confirmModalData.type === 'release-hold' ? 'Release Hold' :
+              'Retry Payout'
+            : 'Confirm'
+        }
+        cancelText="Cancel"
+        isDestructive={confirmModalData?.type === 'pay-now'}
       />
     </div>
   );

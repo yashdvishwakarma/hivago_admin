@@ -20,11 +20,12 @@ const loginSchema = z.object({
 export default function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
-
+ 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showForgotModal, setShowForgotModal] = useState(false);
 
   const loginMutation = useMutation({
     mutationFn: (payload: LoginPayload) => authService.login(payload),
@@ -148,9 +149,13 @@ export default function LoginPage() {
 
               {/* Options */}
               <div className="flex items-center justify-between mt-2">
-                <a href="#" className="text-[13px] font-medium text-[#d72b1f] hover:text-[#b91d13] transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(true)}
+                  className="text-[13px] font-medium text-[#d72b1f] hover:text-[#b91d13] transition-colors"
+                >
                   Forgot password?
-                </a>
+                </button>
                 <div className="flex items-center">
                   <input
                     id="remember-me"
@@ -179,6 +184,28 @@ export default function LoginPage() {
         </div>
 
       </div>
+
+      {showForgotModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-[400px] p-8 border border-gray-100 animate-in zoom-in-95 duration-200 text-center">
+            <div className="w-12 h-12 bg-red-50 text-[#d72b1f] rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m-2-2a4 4 0 118 0v3H8v-3z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Forgot Password?</h2>
+            <p className="text-sm text-gray-500 leading-relaxed mb-6">
+              Please contact the Hivago technical operations team or your system administrator to reset your admin account credentials.
+            </p>
+            <button
+              onClick={() => setShowForgotModal(false)}
+              className="w-full py-3 text-sm font-semibold rounded-xl bg-[#d72b1f] hover:bg-[#b91d13] text-white shadow-md transition-colors"
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

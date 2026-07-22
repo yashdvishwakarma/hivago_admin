@@ -16,7 +16,7 @@ export function SessionWarningModal() {
     setIsRefreshing(true);
     try {
       const response = await authService.refresh(refreshToken);
-      extendSession(response.accessTokenExpiresAt, response.accessToken);
+      extendSession(response.accessTokenExpiresAt, response.accessToken, response.refreshToken);
     } catch (error) {
       console.error('[Auth] Failed to refresh session:', error);
       toast.error('Failed to extend session. Please log in again.');
