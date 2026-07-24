@@ -28,14 +28,21 @@ export default function EditBankDetailsModal({
   const [ifscCode, setIfscCode] = useState('');
   const [accountName, setAccountName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setAccountNumber(initialData?.bankAccountNumber || '');
-      setIfscCode(initialData?.bankIfscCode || '');
-      setAccountName(initialData?.bankAccountName || '');
+    if (!isOpen) {
+      setHasInitialized(false);
+      return;
     }
-  }, [isOpen, initialData]);
+
+    if (isOpen && !hasInitialized && initialData) {
+      setAccountNumber(initialData.bankAccountNumber || '');
+      setIfscCode(initialData.bankIfscCode || '');
+      setAccountName(initialData.bankAccountName || '');
+      setHasInitialized(true);
+    }
+  }, [isOpen, initialData, hasInitialized]);
 
   if (!isOpen) return null;
 

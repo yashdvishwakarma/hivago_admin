@@ -15,9 +15,8 @@ export function SessionWarningModal() {
     
     setIsRefreshing(true);
     try {
-      console.log('[Auth] Auto-attempting to refresh session...');
       const response = await authService.refresh(refreshToken);
-      extendSession(response.accessTokenExpiresAt, response.accessToken);
+      extendSession(response.accessTokenExpiresAt, response.accessToken, response.refreshToken);
     } catch (error) {
       console.error('[Auth] Failed to refresh session:', error);
       toast.error('Failed to extend session. Please log in again.');
@@ -39,7 +38,6 @@ export function SessionWarningModal() {
       const remaining = expTime - now;
 
       if (remaining <= 0) {
-        console.log('[Auth] Session expired, logging out...');
         logout();
         window.location.href = '/login';
       } else if (remaining <= WARNING_THRESHOLD_MS) {

@@ -6,17 +6,25 @@ import { ownerService, type AdminOwner } from '@/core/api/owners';
 import { restaurantService } from '@/core/api/restaurants';
 import { AddOwnerModal } from '../components/AddOwnerModal';
 import EditBankDetailsModal from '@/components/EditBankDetailsModal';
+import { useAuthStore } from '@/store/authStore';
+import { useResetPassword } from '@/hooks/useResetPassword';
+import ConfirmResetModal from '@/components/ConfirmResetModal';
+import TemporaryPasswordModal from '@/components/TemporaryPasswordModal';
 
 function OwnerRow({ 
   owner, 
   associatedRestaurants,
-  onEditBankDetails
+  onEditBankDetails,
+  onResetPassword
 }: { 
   owner: AdminOwner; 
   associatedRestaurants: any[];
   onEditBankDetails: () => void;
+  onResetPassword: () => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const currentUser = useAuthStore((state) => state.user);
+  const isSupport = currentUser?.role?.toLowerCase() === 'support';
 
   return (
     <>
@@ -58,12 +66,22 @@ function OwnerRow({
           </div>
         </td>
         <td className="px-6 py-4 text-right">
-          <button
-            onClick={onEditBankDetails}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-all shadow-sm hover:border-gray-300"
-          >
-            Bank Details
-          </button>
+          <div className="flex items-center justify-end gap-2">
+            {!isSupport && (
+              <button
+                onClick={onResetPassword}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#d72b1f] hover:bg-[#b91d13] transition-all shadow-sm active:scale-95 shrink-0"
+              >
+                Reset Password
+              </button>
+            )}
+            <button
+              onClick={onEditBankDetails}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-all shadow-sm hover:border-gray-300 shrink-0"
+            >
+              Bank Details
+            </button>
+          </div>
         </td>
       </tr>
       
@@ -101,6 +119,35 @@ export default function OwnersPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingOwner, setEditingOwner] = useState<AdminOwner | null>(null);
+  
+  const [resetOwner, setResetOwner] = useState<AdminOwner | null>(null);
+  const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const [tempPasswordData, setTempPasswordData] = useState<{ password: string; name: string } | null>(null);
+
+  const resetMutation = useResetPassword('owners');
+
+  const handleConfirmReset = () => {
+    if (!resetOwner) return;
+    resetMutation.mutate(resetOwner.id, {
+      onSuccess: (data) => {
+        setTempPasswordData({
+          password: data.temporaryPassword,
+          name: resetOwner.name
+        });
+        setShowConfirmReset(false);
+        setResetOwner(null);
+      },
+      onError: (err: any) => {
+        const isForbidden = err?.response?.status === 403 || err?.status === 403;
+        const msg = isForbidden 
+          ? "You don't have permission to reset this password." 
+          : (err?.response?.data?.message || err?.message || 'Failed to reset password.');
+        toast.error(msg);
+        setShowConfirmReset(false);
+        setResetOwner(null);
+      }
+    });
+  };
 
   const queryClient = useQueryClient();
 
@@ -219,6 +266,10 @@ export default function OwnersPage() {
                       owner={owner} 
                       associatedRestaurants={associatedRestaurants} 
                       onEditBankDetails={() => setEditingOwner(owner)}
+                      onResetPassword={() => {
+                        setResetOwner(owner);
+                        setShowConfirmReset(true);
+                      }}
                     />
                   );
                 })
@@ -250,6 +301,25 @@ export default function OwnersPage() {
             });
           }
         }}
+      />
+      <ConfirmResetModal
+        isOpen={showConfirmReset}
+        onClose={() => {
+          setShowConfirmReset(false);
+          setResetOwner(null);
+        }}
+        onConfirm={handleConfirmReset}
+        entityName={resetOwner?.name || ''}
+        entityType="owner"
+        isPending={resetMutation.isPending}
+      />
+
+      <TemporaryPasswordModal
+        isOpen={!!tempPasswordData}
+        onClose={() => setTempPasswordData(null)}
+        temporaryPassword={tempPasswordData?.password || ''}
+        entityName={tempPasswordData?.name || ''}
+        entityType="owner"
       />
     </div>
   );
