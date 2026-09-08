@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { restaurantService, type AdminRestaurant } from '@/core/api/restaurants';
 import { Button } from '@/components/ui/Button';
+import { GooglePlaceLinker } from './GooglePlaceLinker';
 
 interface EditRestaurantModalProps {
   isOpen: boolean;
@@ -221,6 +222,14 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant: initialRestau
                   {errorMsg}
                 </div>
               )}
+
+              <div className="mb-5">
+                <GooglePlaceLinker
+                  restaurantId={initialRestaurant.id}
+                  currentGooglePlaceId={restaurant?.googlePlaceId}
+                  restaurantName={formData.name || restaurant?.name}
+                />
+              </div>
 
           <form id="edit-restaurant-form" onSubmit={handleSubmit} className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
