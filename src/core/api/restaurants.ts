@@ -26,6 +26,21 @@ export interface AdminRestaurant {
   fssaiNumber?: string;
   latitude?: number;
   longitude?: number;
+  googlePlaceId?: string | null;
+}
+
+export interface PlaceSuggestion {
+  placeId: string;
+  description: string;
+  mainText: string;
+  secondaryText: string;
+  isLinked?: boolean;
+  linkedRestaurantId?: string | null;
+  linkedRestaurantName?: string | null;
+}
+
+export interface SearchPlacesResponse {
+  suggestions: PlaceSuggestion[];
 }
 
 export interface RestaurantsResponse {
@@ -62,7 +77,7 @@ export const restaurantService = {
     return response;
   },
   
-  updateRestaurant: async (id: string, payload: Partial<AdminRestaurant> & { fssaiNumber?: string }): Promise<any> => {
+  updateRestaurant: async (id: string, payload: Partial<AdminRestaurant> & { fssaiNumber?: string; googlePlaceId?: string | null }): Promise<any> => {
     const response = await apiClient.put(`/admins/restaurants/${id}`, payload);
     return response;
   },
@@ -71,6 +86,16 @@ export const restaurantService = {
     const response = await apiClient.put(`/admins/restaurants/${restaurantId}/status`, {
       isActive: activate
     });
+    return response;
+  },
+
+  searchGooglePlaces: async (query: string): Promise<SearchPlacesResponse> => {
+    const response = await apiClient.get('/admins/places/search', { params: { query } });
+    return response as unknown as SearchPlacesResponse;
+  },
+
+  linkGooglePlace: async (restaurantId: string, googlePlaceId: string | null): Promise<any> => {
+    const response = await apiClient.put(`/admins/restaurants/${restaurantId}`, { googlePlaceId });
     return response;
   }
 };
