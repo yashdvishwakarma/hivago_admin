@@ -27,6 +27,8 @@ export interface AdminRestaurant {
   latitude?: number;
   longitude?: number;
   googlePlaceId?: string | null;
+  googlePlaceName?: string | null;
+  googlePlaceAddress?: string | null;
 }
 
 export interface PlaceSuggestion {

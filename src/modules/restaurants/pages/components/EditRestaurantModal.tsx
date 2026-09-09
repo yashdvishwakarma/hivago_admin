@@ -226,8 +226,10 @@ export function EditRestaurantModal({ isOpen, onClose, restaurant: initialRestau
               <div className="mb-5">
                 <GooglePlaceLinker
                   restaurantId={initialRestaurant.id}
-                  currentGooglePlaceId={restaurant?.googlePlaceId}
-                  restaurantName={formData.name || restaurant?.name}
+                  currentGooglePlaceId={restaurant?.googlePlaceId ?? initialRestaurant?.googlePlaceId}
+                  currentGooglePlaceName={restaurant?.googlePlaceName ?? initialRestaurant?.googlePlaceName}
+                  currentGooglePlaceAddress={restaurant?.googlePlaceAddress ?? initialRestaurant?.googlePlaceAddress}
+                  restaurantName={formData.name || restaurant?.name || initialRestaurant?.name}
                 />
               </div>
 
