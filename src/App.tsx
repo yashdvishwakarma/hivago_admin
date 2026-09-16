@@ -7,7 +7,7 @@ import { SessionWarningModal } from './components/SessionWarningModal';
 
 // Lazy loading pages
 const DashboardPage = lazy(() => import('./modules/dashboard/pages/DashboardPage'));
-const LiveFleetMapPage = lazy(() => import('./modules/map/pages/LiveFleetMapPage'));
+// const LiveFleetMapPage = lazy(() => import('./modules/map/pages/LiveFleetMapPage'));
 const OrdersPage = lazy(() => import('./modules/orders/pages/OrdersPage'));
 const MenuPage = lazy(() => import('./modules/menu/pages/MenuPage'));
 const RestaurantsPage = lazy(() => import('./modules/restaurants/pages/RestaurantsPage'));
@@ -64,8 +64,8 @@ function App() {
           }
         >
           <Route index element={<DashboardPage />} />
-          <Route path="map" element={<LiveFleetMapPage />} />
-          <Route path="fleet-map" element={<LiveFleetMapPage />} />
+          {/* <Route path="map" element={<LiveFleetMapPage />} /> */}
+          {/* <Route path="fleet-map" element={<LiveFleetMapPage />} /> */}
           <Route path="orders" element={<OrdersPage />} />
           <Route path="menu" element={<MenuPage />} />
           <Route path="restaurants" element={<RestaurantsPage />} />

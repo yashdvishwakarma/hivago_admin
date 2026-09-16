@@ -4,7 +4,7 @@ import {
   ShoppingBag, 
   Store, 
   MapPin,
-  Compass,
+  // Compass,
   Bike, 
   Wallet, 
   LineChart, 
@@ -19,7 +19,7 @@ import { usePendingLocationReviewsCount } from '@/hooks/useLocationReviews';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Live Fleet Map', href: '/map', icon: Compass },
+  // { name: 'Live Fleet Map', href: '/map', icon: Compass },
   { name: 'Orders', href: '/orders', icon: ShoppingBag },
   { name: 'Restaurants', href: '/restaurants', icon: Store, exact: true },
   { name: 'Location Reviews', href: '/restaurants/location-reviews', icon: MapPin, hasBadge: true },
