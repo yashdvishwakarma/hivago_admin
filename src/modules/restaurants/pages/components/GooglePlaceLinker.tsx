@@ -7,6 +7,8 @@ import type { PlaceSuggestion } from '@/core/api/restaurants';
 interface GooglePlaceLinkerProps {
   restaurantId: string;
   currentGooglePlaceId?: string | null;
+  currentGooglePlaceName?: string | null;
+  currentGooglePlaceAddress?: string | null;
   restaurantName?: string;
   onLinkSuccess?: () => void;
 }
@@ -14,6 +16,8 @@ interface GooglePlaceLinkerProps {
 export function GooglePlaceLinker({
   restaurantId,
   currentGooglePlaceId,
+  currentGooglePlaceName,
+  currentGooglePlaceAddress,
   restaurantName,
   onLinkSuccess,
 }: GooglePlaceLinkerProps) {
@@ -54,6 +58,14 @@ export function GooglePlaceLinker({
     });
   };
 
+  const placeDetailsQuery = useGooglePlaceSearch(isLinked && restaurantName ? restaurantName : '');
+  const matchedPlace = isLinked 
+    ? placeDetailsQuery.data?.suggestions?.find(s => s.placeId === currentGooglePlaceId)
+    : null;
+
+  const displayName = currentGooglePlaceName || matchedPlace?.mainText || matchedPlace?.description;
+  const displayAddress = currentGooglePlaceAddress || matchedPlace?.secondaryText;
+
   return (
     <div className="p-4 bg-gray-50/80 rounded-xl border border-gray-200/80 space-y-3">
       {/* Section Header */}
@@ -68,55 +80,103 @@ export function GooglePlaceLinker({
           </div>
         </div>
 
-        {isLinked && (
+        {currentGooglePlaceId ? (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Linked
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+            Not Linked
           </span>
         )}
       </div>
 
       {/* Linked View */}
       {isLinked ? (
-        <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
-          <div className="space-y-0.5 max-w-[70%] truncate">
-            <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Place ID</div>
-            <div className="text-sm font-mono font-medium text-gray-800 truncate" title={currentGooglePlaceId}>
-              {currentGooglePlaceId}
-            </div>
-          </div>
+        <div className="p-3.5 bg-white rounded-lg border border-emerald-200/80 shadow-xs space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1.5 max-w-[70%]">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Google Place Assigned</span>
+              </div>
+              
+              <div className="space-y-0.5">
+                <div className="text-[14px] font-bold text-gray-900 leading-snug">
+                  {displayName || restaurantName || 'Assigned Place'}
+                </div>
+                {displayAddress && (
+                  <div className="text-xs text-gray-500 line-clamp-2">{displayAddress}</div>
+                )}
+              </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsEditing(true);
-                if (restaurantName) {
-                  setQuery(restaurantName);
-                }
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-300 rounded-md transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-gray-500" />
-              Change
-            </button>
-            <button
-              type="button"
-              onClick={handleUnlink}
-              disabled={linkMutation.isPending}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 rounded-md transition-colors disabled:opacity-50"
-            >
-              {linkMutation.isPending ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                'Unlink'
-              )}
-            </button>
+              <div className="text-[12px] font-mono font-medium text-gray-600 pt-0.5 flex items-center gap-1.5">
+                <span className="text-gray-400 font-sans font-normal text-xs">Place ID:</span>
+                <code className="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 text-gray-800 font-semibold truncate max-w-full" title={currentGooglePlaceId}>
+                  {currentGooglePlaceId}
+                </code>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditing(true);
+                  if (restaurantName) {
+                    setQuery(restaurantName);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-300 rounded-md transition-colors shadow-xs"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-gray-500" />
+                Change
+              </button>
+              <button
+                type="button"
+                onClick={handleUnlink}
+                disabled={linkMutation.isPending}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 rounded-md transition-colors disabled:opacity-50"
+              >
+                {linkMutation.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  'Unlink'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       ) : (
         /* Search View */
         <div className="space-y-2">
+          {!currentGooglePlaceId && (
+            <div className="flex items-center gap-2 p-2.5 bg-amber-50/80 border border-amber-200/80 rounded-lg text-xs text-amber-900">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>This restaurant is <strong>not linked</strong> to any Google Place ID. Search below to assign one.</span>
+            </div>
+          )}
+
+          {currentGooglePlaceId && isEditing && (
+            <div className="flex items-center justify-between p-2.5 bg-blue-50/70 rounded-lg border border-blue-200 text-xs">
+              <span className="text-blue-900 font-medium truncate">
+                Currently linked: <code className="font-mono bg-blue-100/80 px-1.5 py-0.5 rounded text-blue-800 font-semibold">{currentGooglePlaceId}</code>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditing(false);
+                  setQuery('');
+                }}
+                className="text-blue-700 hover:text-blue-900 font-semibold shrink-0 ml-2 hover:underline"
+              >
+                Cancel change
+              </button>
+            </div>
+          )}
+
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
               <Search className="w-4 h-4" />
