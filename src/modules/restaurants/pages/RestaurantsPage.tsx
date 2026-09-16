@@ -52,6 +52,8 @@ export default function RestaurantsPage() {
     });
   };
 
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
   const { data, isLoading } = useQuery({
     queryKey: ['restaurants', debouncedSearchQuery],
     queryFn: () => restaurantService.getRestaurants({ search: debouncedSearchQuery }),
@@ -72,7 +74,15 @@ export default function RestaurantsPage() {
     }
   });
 
+  const totalCount = restaurants.length;
   const activeCount = restaurants.filter(r => r.isActive).length;
+  const inactiveCount = restaurants.filter(r => !r.isActive).length;
+
+  const filteredRestaurants = restaurants.filter(r => {
+    if (statusFilter === 'active') return r.isActive;
+    if (statusFilter === 'inactive') return !r.isActive;
+    return true;
+  });
 
   return (
     <div className="w-full">
@@ -92,7 +102,7 @@ export default function RestaurantsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-white rounded-t-2xl border border-b-0 p-4 flex items-center justify-between shadow-sm mt-6">
+      <div className="bg-white rounded-t-2xl border border-b-0 p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm mt-6">
         <div className="relative w-full max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-gray-400" />
@@ -105,8 +115,44 @@ export default function RestaurantsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="px-3 py-1.5 bg-gray-50 border rounded-full text-xs font-semibold text-gray-700">
-          {activeCount} Active
+
+        {/* Status Filter Tabs */}
+        <div className="flex items-center bg-gray-100/80 p-1 rounded-xl border border-gray-200/60 shrink-0">
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              statusFilter === 'all'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            All <span className="ml-1 text-[11px] px-1.5 py-0.2 rounded-full bg-gray-100 text-gray-600 border border-gray-200">{totalCount}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('active')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              statusFilter === 'active'
+                ? 'bg-white text-emerald-700 shadow-sm'
+                : 'text-gray-600 hover:text-emerald-700'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            Active <span className="ml-0.5 text-[11px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">{activeCount}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('inactive')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              statusFilter === 'inactive'
+                ? 'bg-white text-rose-700 shadow-sm'
+                : 'text-gray-600 hover:text-rose-700'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+            Inactive <span className="ml-0.5 text-[11px] px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">{inactiveCount}</span>
+          </button>
         </div>
       </div>
 
@@ -131,19 +177,30 @@ export default function RestaurantsPage() {
                     Loading restaurants...
                   </td>
                 </tr>
-              ) : restaurants.length === 0 ? (
+              ) : filteredRestaurants.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
                     No restaurants found.
                   </td>
                 </tr>
               ) : (
-                restaurants.map((restaurant) => (
-                  <tr key={restaurant.id} className="hover:bg-gray-50/50 transition-colors group">
+                filteredRestaurants.map((restaurant) => (
+                  <tr 
+                    key={restaurant.id} 
+                    className={`transition-colors group ${
+                      restaurant.isActive 
+                        ? 'hover:bg-gray-50/60 bg-white' 
+                        : 'bg-rose-50/20 hover:bg-rose-50/40 border-l-4 border-l-rose-400'
+                    }`}
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center border border-gray-200 shrink-0">
-                          <Store className="w-5 h-5 text-gray-500" />
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center border shrink-0 ${
+                          restaurant.isActive 
+                            ? 'bg-emerald-50 border-emerald-100 text-emerald-600' 
+                            : 'bg-rose-50 border-rose-100 text-rose-500'
+                        }`}>
+                          <Store className="w-5 h-5" />
                         </div>
                         <div>
                           <div className="font-semibold text-[14px] text-gray-900">{restaurant.name}</div>
@@ -162,19 +219,22 @@ export default function RestaurantsPage() {
                       <span className="text-[14px] font-semibold text-gray-900">{restaurant.totalOrderCount}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                      <span className={`inline-flex items-center justify-center gap-1.5 w-24 py-1 rounded-full text-xs font-semibold border shadow-xs ${
                         restaurant.isActive 
-                          ? 'bg-green-50 text-green-700 border-green-200' 
-                          : 'bg-gray-100 text-gray-600 border-gray-200'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
                       }`}>
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${
+                          restaurant.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                        }`} />
                         {restaurant.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-3">
+                      <div className="flex items-center justify-end gap-2">
                         {!isSupport && (
                           <button 
-                            className="text-gray-400 hover:text-[#d72b1f] transition-colors" 
+                            className="p-1.5 text-gray-400 hover:text-[#d72b1f] hover:bg-gray-100 rounded-lg transition-colors" 
                             title="Reset Password"
                             onClick={() => {
                               setResetRestaurant(restaurant);
@@ -185,25 +245,28 @@ export default function RestaurantsPage() {
                           </button>
                         )}
                         <button 
-                          className="text-gray-400 hover:text-gray-700 transition-colors" 
+                          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors" 
                           title="Edit"
                           onClick={() => setEditingRestaurant(restaurant)}
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button 
-                          className={`transition-colors ${
-                            restaurant.isActive ? 'text-[#d72b1f] hover:text-[#b91d13]' : 'text-green-600 hover:text-green-700'
-                          } disabled:opacity-50`}
-                          title={restaurant.isActive ? 'Deactivate' : 'Activate'}
+                          className={`inline-flex items-center justify-center gap-1.5 w-28 py-1 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-50 ${
+                            restaurant.isActive 
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' 
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                          }`}
+                          title={restaurant.isActive ? 'Deactivate Restaurant' : 'Activate Restaurant'}
                           onClick={() => setToggleConfirmData({ id: restaurant.id, name: restaurant.name, isActive: restaurant.isActive })}
                           disabled={toggleMutation.isPending && toggleMutation.variables?.id === restaurant.id}
                         >
                           {toggleMutation.isPending && toggleMutation.variables?.id === restaurant.id ? (
-                            <Loader2 className="w-[18px] h-[18px] animate-spin" />
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
-                            <Power className="w-[18px] h-[18px]" />
+                            <Power className="w-3.5 h-3.5" />
                           )}
+                          <span>{restaurant.isActive ? 'Deactivate' : 'Activate'}</span>
                         </button>
                       </div>
                     </td>
