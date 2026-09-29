@@ -125,7 +125,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="block w-full pl-10 pr-3 py-3 rounded-xl border-0 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all sm:text-sm placeholder:text-gray-400"
-                    placeholder="admin@hivago.com"
+                    placeholder="Email Address"
                   />
                 </div>
               </div>
