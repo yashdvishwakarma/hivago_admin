@@ -13,6 +13,8 @@ export interface AdminOwner {
   bankAccountNumber?: string;
   bankIfscCode?: string;
   bankAccountName?: string;
+  crossOutletAcceptEnabled?: boolean;
+  isCrossOutletAcceptEnabled?: boolean;
 }
 
 export interface OwnersResponse {
@@ -50,6 +52,11 @@ export const ownerService = {
     payload: { bankAccountNumber: string; bankIfscCode: string; bankAccountName: string }
   ): Promise<any> => {
     const response = await apiClient.put(`/admin/owners/${ownerId}/bank`, payload);
+    return response;
+  },
+
+  toggleCrossOutletAccept: async (ownerId: string, enabled: boolean): Promise<any> => {
+    const response = await apiClient.put(`/admin/owners/${ownerId}/cross-outlet-accept`, { enabled });
     return response;
   },
 };

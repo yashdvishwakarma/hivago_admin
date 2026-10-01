@@ -15,16 +15,21 @@ function OwnerRow({
   owner, 
   associatedRestaurants,
   onEditBankDetails,
-  onResetPassword
+  onResetPassword,
+  onToggleCrossAccept,
+  isTogglingCrossAccept
 }: { 
   owner: AdminOwner; 
   associatedRestaurants: any[];
   onEditBankDetails: () => void;
   onResetPassword: () => void;
+  onToggleCrossAccept: (enabled: boolean) => void;
+  isTogglingCrossAccept: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const currentUser = useAuthStore((state) => state.user);
   const isSupport = currentUser?.role?.toLowerCase() === 'support';
+  const isCrossAcceptOn = Boolean(owner.crossOutletAcceptEnabled ?? owner.isCrossOutletAcceptEnabled);
 
   return (
     <>
@@ -67,6 +72,20 @@ function OwnerRow({
         </td>
         <td className="px-6 py-4 text-right">
           <div className="flex items-center justify-end gap-2">
+            {!isSupport && (
+              <button
+                onClick={() => onToggleCrossAccept(!isCrossAcceptOn)}
+                disabled={isTogglingCrossAccept}
+                title="Toggle Multi-Outlet Cross-Accept for this owner"
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-sm shrink-0 border ${
+                  isCrossAcceptOn
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                Cross-Accept: {isCrossAcceptOn ? 'ON' : 'OFF'}
+              </button>
+            )}
             {!isSupport && (
               <button
                 onClick={onResetPassword}
@@ -161,6 +180,18 @@ export default function OwnersPage() {
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || "Failed to update bank details.");
+    }
+  });
+
+  const toggleCrossAcceptMutation = useMutation({
+    mutationFn: ({ ownerId, enabled }: { ownerId: string; enabled: boolean }) =>
+      ownerService.toggleCrossOutletAccept(ownerId, enabled),
+    onSuccess: () => {
+      toast.success("Cross-outlet accept status updated!");
+      queryClient.invalidateQueries({ queryKey: ['owners'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || "Failed to update cross-outlet accept status.");
     }
   });
 
@@ -270,6 +301,8 @@ export default function OwnersPage() {
                         setResetOwner(owner);
                         setShowConfirmReset(true);
                       }}
+                      onToggleCrossAccept={(enabled) => toggleCrossAcceptMutation.mutate({ ownerId: owner.id, enabled })}
+                      isTogglingCrossAccept={toggleCrossAcceptMutation.isPending}
                     />
                   );
                 })
