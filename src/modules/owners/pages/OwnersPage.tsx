@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Search, Plus, Users, ChevronDown, ChevronRight, Store } from 'lucide-react';
-import { ownerService, type AdminOwner } from '@/core/api/owners';
+import { Search, Plus, Users, ChevronDown, ChevronRight, Store, Loader2 } from 'lucide-react';
+import { ownerService, type AdminOwner, type OwnersResponse } from '@/core/api/owners';
 import { restaurantService } from '@/core/api/restaurants';
 import { AddOwnerModal } from '../components/AddOwnerModal';
 import EditBankDetailsModal from '@/components/EditBankDetailsModal';
@@ -77,13 +77,14 @@ function OwnerRow({
                 onClick={() => onToggleCrossAccept(!isCrossAcceptOn)}
                 disabled={isTogglingCrossAccept}
                 title="Toggle Multi-Outlet Cross-Accept for this owner"
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-sm shrink-0 border ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-sm shrink-0 border flex items-center justify-center gap-1.5 ${
                   isCrossAcceptOn
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                     : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
-                }`}
+                } ${isTogglingCrossAccept ? 'opacity-70 cursor-not-allowed' : 'active:scale-95'}`}
               >
-                Cross-Accept: {isCrossAcceptOn ? 'ON' : 'OFF'}
+                {isTogglingCrossAccept && <Loader2 className="w-3.5 h-3.5 animate-spin text-current shrink-0" />}
+                <span>Cross-Accept: {isCrossAcceptOn ? 'ON' : 'OFF'}</span>
               </button>
             )}
             {!isSupport && (
@@ -186,13 +187,40 @@ export default function OwnersPage() {
   const toggleCrossAcceptMutation = useMutation({
     mutationFn: ({ ownerId, enabled }: { ownerId: string; enabled: boolean }) =>
       ownerService.toggleCrossOutletAccept(ownerId, enabled),
+    onMutate: async ({ ownerId, enabled }) => {
+      await queryClient.cancelQueries({ queryKey: ['owners'] });
+      const previousOwnersData = queryClient.getQueryData<OwnersResponse>(['owners']);
+
+      queryClient.setQueryData<OwnersResponse>(['owners'], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          owners: old.owners.map((o) =>
+            o.id === ownerId
+              ? {
+                  ...o,
+                  crossOutletAcceptEnabled: enabled,
+                  isCrossOutletAcceptEnabled: enabled,
+                }
+              : o
+          ),
+        };
+      });
+
+      return { previousOwnersData };
+    },
+    onError: (err: any, _variables, context) => {
+      if (context?.previousOwnersData) {
+        queryClient.setQueryData(['owners'], context.previousOwnersData);
+      }
+      toast.error(err.response?.data?.message || "Failed to update cross-outlet accept status.");
+    },
     onSuccess: () => {
       toast.success("Cross-outlet accept status updated!");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['owners'] });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Failed to update cross-outlet accept status.");
-    }
   });
 
   // Fetch Owners
@@ -302,7 +330,7 @@ export default function OwnersPage() {
                         setShowConfirmReset(true);
                       }}
                       onToggleCrossAccept={(enabled) => toggleCrossAcceptMutation.mutate({ ownerId: owner.id, enabled })}
-                      isTogglingCrossAccept={toggleCrossAcceptMutation.isPending}
+                      isTogglingCrossAccept={toggleCrossAcceptMutation.isPending && toggleCrossAcceptMutation.variables?.ownerId === owner.id}
                     />
                   );
                 })
